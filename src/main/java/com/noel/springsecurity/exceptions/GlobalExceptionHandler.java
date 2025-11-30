@@ -10,6 +10,9 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.security.SignatureException;
+import io.jsonwebtoken.JwtException;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -26,7 +29,7 @@ public class GlobalExceptionHandler {
                 .build(), status);
     }
 
-    // 1. Handle Validation Errors (@Valid annotations)
+    // Handle Validation Errors (@Valid annotations)
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiErrorResponse> handleValidationErrors(MethodArgumentNotValidException ex) {
         Map<String, String> errors = new HashMap<>();
@@ -43,37 +46,59 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
     }
 
-    // 2. Handle Token Refresh Errors (403 Forbidden)
+    // Handle Token Refresh Errors (403 Forbidden)
     @ExceptionHandler(TokenRefreshException.class)
     public ResponseEntity<ApiErrorResponse> handleTokenRefreshException(TokenRefreshException ex) {
         return buildResponse(HttpStatus.FORBIDDEN, ex.getMessage());
     }
 
-    // 3. Handle Bad Credentials (Login fail)
+    // Handle Bad Credentials (Login fail)
     @ExceptionHandler(BadCredentialsException.class)
     public ResponseEntity<ApiErrorResponse> handleBadCredentials(BadCredentialsException ex) {
         return buildResponse(HttpStatus.UNAUTHORIZED, "Invalid email or password");
     }
 
-    // 4. Handle Disabled Account (Email not verified)
+    // Handle Disabled Account (Email not verified)
     @ExceptionHandler(DisabledException.class)
     public ResponseEntity<ApiErrorResponse> handleDisabledAccount(DisabledException ex) {
         return buildResponse(HttpStatus.UNAUTHORIZED, "Account is disabled or email not verified");
     }
 
-    // 5. Handle User Already Exists
+    // Handle User Already Exists
     @ExceptionHandler(UserAlreadyExistsException.class)
     public ResponseEntity<ApiErrorResponse> handleUserExists(UserAlreadyExistsException ex) {
         return buildResponse(HttpStatus.CONFLICT, ex.getMessage());
     }
 
-    // 6. Handle Not Found
+    // Handle Not Found
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<ApiErrorResponse> handleNotFound(ResourceNotFoundException ex) {
         return buildResponse(HttpStatus.NOT_FOUND, ex.getMessage());
     }
 
-    // 7. Fallback for everything else
+    /**
+     * Handling JWT Errors
+     */
+    // Handle Expired JWT (Crucial for Refresh Token flow)
+    @ExceptionHandler(ExpiredJwtException.class)
+    public ResponseEntity<ApiErrorResponse> handleExpiredJwt(ExpiredJwtException ex) {
+        return buildResponse(HttpStatus.UNAUTHORIZED, "Token has expired. Please refresh your session.");
+    }
+    // Handle Invalid Signature / Malformed Token (Security)
+    @ExceptionHandler({SignatureException.class, io.jsonwebtoken.MalformedJwtException.class, io.jsonwebtoken.security.SecurityException.class})
+    public ResponseEntity<ApiErrorResponse> handleInvalidJwt(Exception ex) {
+        return buildResponse(HttpStatus.UNAUTHORIZED, "Invalid authentication token.");
+    }
+    // Catch-all for other JWT errors
+    @ExceptionHandler(JwtException.class)
+    public ResponseEntity<ApiErrorResponse> handleGenericJwt(JwtException ex) {
+        return buildResponse(HttpStatus.UNAUTHORIZED, "Authentication error.");
+    }
+
+
+
+
+    // Fallback for everything else
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiErrorResponse> handleGlobalException(Exception ex) {
         log.error("Unhandled exception: {}", ex.getMessage());
