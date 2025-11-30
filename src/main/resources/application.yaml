@@ -1,0 +1,52 @@
+spring:
+  application:
+    name: Spring-Security
+
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+
+  # Email Configuration (JavaMailSender)
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
+
+# Custom Security Configuration
+app:
+  security:
+    jwt:
+      secret-key: ${JWT_SECRET_KEY}
+      access-token-expiration: 900000      # 15 minutes (in ms)
+      refresh-token-expiration: 604800000  # 7 days (in ms)
+
+    cors:
+      allowed-origins: ${FRONTEND_URL} # Your Frontend URL
+
+    email:
+      verification-url: ${EMAIL_VERIFICATION_URL} # Frontend Verification Page
