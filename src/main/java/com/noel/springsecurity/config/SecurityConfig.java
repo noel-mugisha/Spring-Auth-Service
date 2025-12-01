@@ -50,7 +50,7 @@ public class SecurityConfig {
                         // Public Endpoints
                         .requestMatchers("/api/v1/auth/**").permitAll()
                         // Public Swagger Endpoints (Optional, useful for testing)
-                        .requestMatchers("/v3/api-docs/**", "/swagger-ui/**").permitAll()
+                        .requestMatchers(SWAGGER_WHITELIST).permitAll()
                         // Any other request requires authentication
                         .anyRequest().authenticated()
                 )
@@ -98,4 +98,11 @@ public class SecurityConfig {
         source.registerCorsConfiguration("/**", configuration);
         return source;
     }
+
+
+    private static final String[] SWAGGER_WHITELIST = {
+            "/swagger-ui/**",
+            "/v3/api-docs/**",
+            "/swagger-ui.html"
+    };
 }
