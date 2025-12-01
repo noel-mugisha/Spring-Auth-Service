@@ -101,6 +101,13 @@ public class GlobalExceptionHandler {
         return buildResponse(HttpStatus.GONE, ex.getMessage());
     }
 
+    // Handle Rate Limiting (429 Too Many Requests)
+    @ExceptionHandler(RateLimitExceededException.class)
+    public ResponseEntity<ApiErrorResponse> handleRateLimitExceeded(RateLimitExceededException ex) {
+        return buildResponse(HttpStatus.TOO_MANY_REQUESTS, ex.getMessage());
+    }
+
+
 
     // Fallback for everything else
     @ExceptionHandler(Exception.class)

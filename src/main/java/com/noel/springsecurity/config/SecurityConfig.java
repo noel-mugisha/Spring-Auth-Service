@@ -1,6 +1,7 @@
 package com.noel.springsecurity.config;
 
 import com.noel.springsecurity.filters.JwtAuthenticationFilter;
+import com.noel.springsecurity.filters.RateLimitingFilter;
 import com.noel.springsecurity.security.CustomUserDetailsService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -30,7 +31,7 @@ import java.util.List;
 @EnableWebSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
-
+    private final RateLimitingFilter rateLimitingFilter;
     private final JwtAuthenticationFilter jwtAuthFilter;
     private final CustomUserDetailsService userDetailsService;
 
@@ -57,6 +58,8 @@ public class SecurityConfig {
                     exc.accessDeniedHandler(((request, response, accessDeniedException) ->
                             response.setStatus(HttpStatus.FORBIDDEN.value())));
                 })
+                // Add Rate Limit Filter FIRST
+                .addFilterBefore(rateLimitingFilter, UsernamePasswordAuthenticationFilter.class)
                 // Add JWT Filter before the standard UsernamePassword filter
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
