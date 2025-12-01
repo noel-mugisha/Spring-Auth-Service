@@ -16,6 +16,11 @@ public interface IAuthService {
 
     void logout(String incomingRefreshToken);
 
+    void requestPasswordReset(String email);
+
+    void resetPassword(String token, String newPassword);
+
+
     /**
      * Internal DTO to carry tokens and user data from Service to Controller.
      */

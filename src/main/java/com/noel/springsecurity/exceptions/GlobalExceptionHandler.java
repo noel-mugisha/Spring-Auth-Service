@@ -96,8 +96,8 @@ public class GlobalExceptionHandler {
     }
 
     // Handle Expired Verification link toke
-    @ExceptionHandler(VerificationLinkExpiredException.class)
-    public ResponseEntity<ApiErrorResponse> handleExpiredVerificationLink(VerificationLinkExpiredException ex) {
+    @ExceptionHandler(LinkExpiredException.class)
+    public ResponseEntity<ApiErrorResponse> handleExpiredVerificationLink(LinkExpiredException ex) {
         return buildResponse(HttpStatus.GONE, ex.getMessage());
     }
 

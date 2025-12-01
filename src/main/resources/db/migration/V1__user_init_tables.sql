@@ -14,6 +14,10 @@ CREATE TABLE users (
                        verification_token VARCHAR(255),
                        verification_token_expiry TIMESTAMP,
 
+    -- Password Reset Fields
+                       password_reset_token VARCHAR(255),
+                       password_reset_token_expiry TIMESTAMP,
+
     -- Auditing
                        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
                        updated_at TIMESTAMP
@@ -21,6 +25,8 @@ CREATE TABLE users (
 
 -- Index for faster login lookups
 CREATE INDEX idx_users_email ON users(email);
+-- Index for faster password reset lookups
+CREATE INDEX idx_users_password_reset_token ON users(password_reset_token);
 
 
 -- 2. Refresh Tokens Table
@@ -37,3 +43,5 @@ CREATE TABLE refresh_tokens (
 
 -- Index for looking up tokens quickly during refresh
 CREATE INDEX idx_refresh_tokens_hash ON refresh_tokens(token_hash);
+-- Index for faster lookup/deletion of refresh tokens by user
+CREATE INDEX idx_refresh_tokens_user_id ON refresh_tokens(user_id);

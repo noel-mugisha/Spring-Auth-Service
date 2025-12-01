@@ -1,7 +1,9 @@
 package com.noel.springsecurity.controllers;
 
+import com.noel.springsecurity.dto.request.ForgotPasswordRequest;
 import com.noel.springsecurity.dto.request.LoginRequest;
 import com.noel.springsecurity.dto.request.RegisterRequest;
+import com.noel.springsecurity.dto.request.ResetPasswordRequest;
 import com.noel.springsecurity.dto.response.ApiMessageResponse;
 import com.noel.springsecurity.dto.response.AuthResponse;
 import com.noel.springsecurity.services.IAuthService;
@@ -70,5 +72,17 @@ public class AuthController {
                 .body(
                         new ApiMessageResponse("Logged out successfully")
                 );
+    }
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<ApiMessageResponse> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
+        authService.requestPasswordReset(request.email());
+        return ResponseEntity.ok(new ApiMessageResponse("If an account with that email exists, a password reset link has been sent."));
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<ApiMessageResponse> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+        authService.resetPassword(request.token(), request.newPassword());
+        return ResponseEntity.ok(new ApiMessageResponse("Password successfully updated. Please login with your new password."));
     }
 }

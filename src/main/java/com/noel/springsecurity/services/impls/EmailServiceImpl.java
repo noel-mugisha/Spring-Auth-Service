@@ -17,11 +17,10 @@ import java.nio.charset.StandardCharsets;
 @RequiredArgsConstructor
 @Slf4j
 public class EmailServiceImpl implements IEmailService {
-
     private final JavaMailSender mailSender;
-
     @Value("${spring.mail.username}")
     private String fromEmail;
+
 
     @Async
     @Override
@@ -46,6 +45,38 @@ public class EmailServiceImpl implements IEmailService {
         }
     }
 
+    @Async
+    @Override
+    public void sendPasswordResetEmail(String to, String username, String resetLink) {
+        try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, MimeMessageHelper.MULTIPART_MODE_MIXED_RELATED, StandardCharsets.UTF_8.name());
+
+            helper.setFrom(fromEmail);
+            helper.setTo(to);
+            helper.setSubject("Reset your password");
+
+            String htmlContent = """
+                <div style="font-family:Helvetica,Arial,sans-serif;font-size:16px;margin:0;color:#0b0c0c">
+                  <h3>Password Reset Request</h3>
+                  <p>Hi %s,</p>
+                  <p>We received a request to reset your password. Click the link below to choose a new password:</p>
+                  <p><a href="%s">Reset Password</a></p>
+                  <p>This link expires in 15 minutes.</p>
+                  <p>If you didn't ask for this, you can safely ignore this email.</p>
+                </div>
+                """.formatted(username, resetLink);
+
+            helper.setText(htmlContent, true);
+            mailSender.send(message);
+            log.info("Password reset email sent to: {}", to);
+        } catch (MessagingException e) {
+            log.error("Failed to send password reset email", e);
+        }
+    }
+
+
+    // Helper method to build the email template
     private String buildEmailTemplate(String username, String link) {
         return """
             <div style="font-family:Helvetica,Arial,sans-serif;font-size:16px;margin:0;color:#0b0c0c">

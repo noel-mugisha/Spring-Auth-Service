@@ -49,4 +49,6 @@ app:
       allowed-origins: ${FRONTEND_URL} # Your Frontend URL
 
     email:
-      verification-url: ${EMAIL_VERIFICATION_URL} # Frontend Verification Page
+      verification-url: ${FRONTEND_URL}/verify-email # Frontend Verification Page
+      reset-password-url: ${FRONTEND_URL}/reset-password
+      reset-password-expiration: 15  # 15 minutes

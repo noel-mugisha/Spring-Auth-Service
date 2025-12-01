@@ -5,11 +5,12 @@ import com.noel.springsecurity.dto.request.RegisterRequest;
 import com.noel.springsecurity.entities.RefreshToken;
 import com.noel.springsecurity.entities.User;
 import com.noel.springsecurity.enums.ERole;
+import com.noel.springsecurity.events.PasswordResetRequestedEvent;
 import com.noel.springsecurity.events.RegistrationCompleteEvent;
 import com.noel.springsecurity.exceptions.ResourceNotFoundException;
 import com.noel.springsecurity.exceptions.TokenRefreshException;
 import com.noel.springsecurity.exceptions.UserAlreadyExistsException;
-import com.noel.springsecurity.exceptions.VerificationLinkExpiredException;
+import com.noel.springsecurity.exceptions.LinkExpiredException;
 import com.noel.springsecurity.mappers.IUserMapper;
 import com.noel.springsecurity.repositories.IRefreshTokenRepository;
 import com.noel.springsecurity.repositories.IUserRepository;
@@ -36,7 +37,6 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 public class AuthServiceImpl implements IAuthService {
-
     private final IUserRepository userRepository;
     private final IRefreshTokenRepository refreshTokenRepository;
     private final PasswordEncoder passwordEncoder;
@@ -44,9 +44,10 @@ public class AuthServiceImpl implements IAuthService {
     private final AuthenticationManager authenticationManager;
     private final ApplicationEventPublisher eventPublisher;
     private final IUserMapper userMapper;
-
     @Value("${app.security.jwt.refresh-token-expiration}")
     private long refreshTokenDurationMs;
+    @Value("${app.security.email.reset-password-expiration}")
+    private int resetPasswordExpirationMinutes;
 
     @Override
     @Transactional
@@ -77,7 +78,7 @@ public class AuthServiceImpl implements IAuthService {
                 .orElseThrow(() -> new ResourceNotFoundException("Invalid verification token"));
 
         if (user.getVerificationTokenExpiry().isBefore(LocalDateTime.now())) {
-            throw new VerificationLinkExpiredException("Verification link has expired");
+            throw new LinkExpiredException("Verification link has expired");
         }
 
         user.setEnabled(true);
@@ -139,6 +140,48 @@ public class AuthServiceImpl implements IAuthService {
         refreshTokenRepository.deleteByTokenHash(tokenHash);
         SecurityContextHolder.clearContext();
     }
+
+    @Override
+    @Transactional
+    public void requestPasswordReset(String email) {
+        userRepository.findByEmail(email).ifPresent(user -> {
+            // Generate Token
+            String rawToken = UUID.randomUUID().toString();
+            String hashedToken = TokenHashUtil.hashToken(rawToken);
+            // Save to DB
+            user.setPasswordResetToken(hashedToken);
+            user.setPasswordResetTokenExpiry(LocalDateTime.now().plusMinutes(resetPasswordExpirationMinutes)); // Short expiry 15 min
+            userRepository.save(user);
+            // Send Email (Async Event)
+            eventPublisher.publishEvent(new PasswordResetRequestedEvent(user, rawToken));
+        });
+    }
+
+    @Override
+    @Transactional
+    public void resetPassword(String token, String newPassword) {
+        // Hash incoming token to find user
+        String hashedToken = TokenHashUtil.hashToken(token);
+        User user = userRepository.findByPasswordResetToken(hashedToken)
+                .orElseThrow(() -> new ResourceNotFoundException("Invalid or expired password reset token"));
+        // Check Expiry
+        if (user.getPasswordResetTokenExpiry().isBefore(LocalDateTime.now())) {
+            throw new LinkExpiredException("Password reset token has expired");
+        }
+        // Update Password
+        user.setPassword(passwordEncoder.encode(newPassword));
+        // Clear Token fields
+        user.setPasswordResetToken(null);
+        user.setPasswordResetTokenExpiry(null);
+
+        userRepository.save(user);
+
+        // SECURITY CRITICAL: Revoke all existing sessions (Refresh Tokens)
+        // This kicks the hacker (or the user) out of all devices, forcing a re-login with the new password.
+        refreshTokenRepository.deleteByUser(user);
+    }
+
+
 
     // --- Helper Methods ---
     private String createRefreshToken(User user) {
