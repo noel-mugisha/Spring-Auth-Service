@@ -53,8 +53,8 @@ app:
       reset-password-url: ${FRONTEND_URL}/reset-password
       reset-password-expiration: 15  # 15 minutes
 
-    seed:
-      enabled: true # Master switch
-      admin:
-        email: "admin@company.com"
-        password: "ChangeMe123!"
+  seed:
+    enabled: true # Master switch
+    admin:
+      email: "admin@company.com"
+      password: "ChangeMe123!"
