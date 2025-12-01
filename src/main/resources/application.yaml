@@ -52,3 +52,9 @@ app:
       verification-url: ${FRONTEND_URL}/verify-email # Frontend Verification Page
       reset-password-url: ${FRONTEND_URL}/reset-password
       reset-password-expiration: 15  # 15 minutes
+
+    seed:
+      enabled: true # Master switch
+      admin:
+        email: "admin@company.com"
+        password: "ChangeMe123!"
