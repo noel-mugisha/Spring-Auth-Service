@@ -95,7 +95,11 @@ public class GlobalExceptionHandler {
         return buildResponse(HttpStatus.UNAUTHORIZED, "Authentication error.");
     }
 
-
+    // Handle Expired Verification link toke
+    @ExceptionHandler(VerificationLinkExpiredException.class)
+    public ResponseEntity<ApiErrorResponse> handleExpiredVerificationLink(VerificationLinkExpiredException ex) {
+        return buildResponse(HttpStatus.GONE, ex.getMessage());
+    }
 
 
     // Fallback for everything else

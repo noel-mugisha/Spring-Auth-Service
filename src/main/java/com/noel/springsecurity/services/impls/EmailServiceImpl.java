@@ -1,6 +1,6 @@
 package com.noel.springsecurity.services.impls;
 
-import com.noel.springsecurity.services.EmailService;
+import com.noel.springsecurity.services.IEmailService;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
@@ -16,7 +16,7 @@ import java.nio.charset.StandardCharsets;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-public class EmailServiceImpl implements EmailService {
+public class EmailServiceImpl implements IEmailService {
 
     private final JavaMailSender mailSender;
 
