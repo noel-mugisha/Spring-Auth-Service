@@ -101,8 +101,14 @@ public class SecurityConfig {
 
 
     private static final String[] SWAGGER_WHITELIST = {
-            "/swagger-ui/**",
+            "/v3/api-docs",
+            "/v3/api-docs.yaml",
             "/v3/api-docs/**",
-            "/swagger-ui.html"
+            "/swagger-ui.html",
+            "/swagger-ui/index.html",
+            "/swagger-ui/**",
+            "/swagger-ui-oauth2-redirect.html",
+            "/swagger-resources/**"
     };
+
 }
