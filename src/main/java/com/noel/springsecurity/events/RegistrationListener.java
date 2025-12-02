@@ -24,7 +24,8 @@ public class RegistrationListener implements ApplicationListener<RegistrationCom
         // Construct the link: http://frontend.com/verify-email?token=xyz
         String link = verificationUrl + "?token=" + token;
 
+        String fullName= user.getFirstName() + " " + user.getLastName();
         // Send the email
-        emailService.sendVerificationEmail(user.getEmail(), user.getFullName(), link);
+        emailService.sendVerificationEmail(user.getEmail(), fullName, link);
     }
 }

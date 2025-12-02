@@ -58,7 +58,8 @@ public class AuthServiceImpl implements IAuthService {
         }
 
         User user = new User();
-        user.setFullName(request.fullName());
+        user.setFirstName(request.firstName());
+        user.setLastName(request.lastName());
         user.setEmail(request.email());
         user.setPassword(passwordEncoder.encode(request.password()));
         user.setRole(ERole.USER);

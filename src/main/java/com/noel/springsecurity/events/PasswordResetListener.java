@@ -17,9 +17,10 @@ public class PasswordResetListener implements ApplicationListener<PasswordResetR
     @Override
     public void onApplicationEvent(PasswordResetRequestedEvent event) {
         String link = resetPasswordUrl + "?token=" + event.getRawToken();
+        String fullName = event.getUser().getFirstName() + " " + event.getUser().getLastName();
         emailService.sendPasswordResetEmail(
                 event.getUser().getEmail(),
-                event.getUser().getFullName(),
+                fullName,
                 link
         );
     }

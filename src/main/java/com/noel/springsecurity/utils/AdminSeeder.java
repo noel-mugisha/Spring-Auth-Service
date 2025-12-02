@@ -53,7 +53,8 @@ public class AdminSeeder implements CommandLineRunner {
         log.info("Seeding Admin User...");
 
         User admin = new User();
-        admin.setFullName("System Administrator");
+        admin.setFirstName("System");
+        admin.setLastName("Administrator");
         admin.setEmail(adminEmail);
         admin.setPassword(passwordEncoder.encode(adminPassword));
         admin.setRole(ERole.ADMIN);
