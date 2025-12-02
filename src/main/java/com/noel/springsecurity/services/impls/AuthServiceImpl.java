@@ -1,5 +1,6 @@
 package com.noel.springsecurity.services.impls;
 
+import com.noel.springsecurity.dto.UserDto;
 import com.noel.springsecurity.dto.request.LoginRequest;
 import com.noel.springsecurity.dto.request.RegisterRequest;
 import com.noel.springsecurity.entities.RefreshToken;
@@ -51,7 +52,7 @@ public class AuthServiceImpl implements IAuthService {
 
     @Override
     @Transactional
-    public void register(RegisterRequest request) {
+    public UserDto register(RegisterRequest request) {
         if (userRepository.existsByEmail(request.email())) {
             throw new UserAlreadyExistsException("Email already in use");
         }
@@ -65,10 +66,11 @@ public class AuthServiceImpl implements IAuthService {
         user.setVerificationToken(UUID.randomUUID().toString());
         user.setVerificationTokenExpiry(LocalDateTime.now().plusHours(24));
 
-        userRepository.save(user);
+        var savedUser = userRepository.save(user);
 
         // Publish event to send email async
         eventPublisher.publishEvent(new RegistrationCompleteEvent(user));
+        return userMapper.toDto(savedUser);
     }
 
     @Override

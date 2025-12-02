@@ -14,6 +14,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.util.UriComponentsBuilder;
 
 @RestController
 @RequestMapping("/api/v1/auth")
@@ -24,9 +25,13 @@ public class AuthController {
     private final CookieUtil cookieUtil;
 
     @PostMapping("/register")
-    public ResponseEntity<ApiMessageResponse> register(@Valid @RequestBody RegisterRequest request) {
-        authService.register(request);
-        return ResponseEntity.ok(new ApiMessageResponse(
+    public ResponseEntity<ApiMessageResponse> register(
+            @Valid @RequestBody RegisterRequest request,
+            UriComponentsBuilder uriBuilder
+    ) {
+        var userDto = authService.register(request);
+        var uri = uriBuilder.path("/api/v1/users/{id}").buildAndExpand(userDto.id()).toUri();
+        return ResponseEntity.created(uri).body(new ApiMessageResponse(
                 "User registered successfully. Please check your email to verify your account."
         ));
     }
