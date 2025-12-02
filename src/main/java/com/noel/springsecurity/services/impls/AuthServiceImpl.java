@@ -64,7 +64,7 @@ public class AuthServiceImpl implements IAuthService {
         user.setRole(ERole.USER);
         user.setEnabled(false); // Must verify email first
         user.setVerificationToken(UUID.randomUUID().toString());
-        user.setVerificationTokenExpiry(LocalDateTime.now().plusHours(24));
+        user.setVerificationTokenExpiry(LocalDateTime.now().plusHours(24)); // 24hrs for verification
 
         var savedUser = userRepository.save(user);
 

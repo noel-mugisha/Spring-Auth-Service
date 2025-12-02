@@ -34,7 +34,7 @@ public class EmailServiceImpl implements IEmailService {
             helper.setTo(to);
             helper.setSubject("Verify your email address");
 
-            String htmlContent = buildEmailTemplate(username, verificationLink);
+            String htmlContent = buildVerificationEmailTemplate(username, verificationLink);
             helper.setText(htmlContent, true);
 
             mailSender.send(message);
@@ -56,18 +56,9 @@ public class EmailServiceImpl implements IEmailService {
             helper.setTo(to);
             helper.setSubject("Reset your password");
 
-            String htmlContent = """
-                <div style="font-family:Helvetica,Arial,sans-serif;font-size:16px;margin:0;color:#0b0c0c">
-                  <h3>Password Reset Request</h3>
-                  <p>Hi %s,</p>
-                  <p>We received a request to reset your password. Click the link below to choose a new password:</p>
-                  <p><a href="%s">Reset Password</a></p>
-                  <p>This link expires in 15 minutes.</p>
-                  <p>If you didn't ask for this, you can safely ignore this email.</p>
-                </div>
-                """.formatted(username, resetLink);
-
+            String htmlContent = buildPasswordResetEmailTemplate(username, resetLink);
             helper.setText(htmlContent, true);
+
             mailSender.send(message);
             log.info("Password reset email sent to: {}", to);
         } catch (MessagingException e) {
@@ -76,60 +67,153 @@ public class EmailServiceImpl implements IEmailService {
     }
 
 
-    // Helper method to build the email template
-    private String buildEmailTemplate(String username, String link) {
+    private String buildVerificationEmailTemplate(String username, String link) {
         return """
-            <div style="font-family:Helvetica,Arial,sans-serif;font-size:16px;margin:0;color:#0b0c0c">
-              <table role="presentation" width="100%%" style="border-collapse:collapse;min-width:100%%;width:100%%!important" cellpadding="0" cellspacing="0" border="0">
-                <tbody><tr>
-                  <td width="100%%" height="53" bgcolor="#0b0c0c">
-                    <table role="presentation" width="100%%" style="border-collapse:collapse;max-width:580px" cellpadding="0" cellspacing="0" border="0" align="center">
-                      <tbody><tr>
-                        <td width="70" bgcolor="#0b0c0c" valign="middle">
-                            <span style="font-family:Helvetica,Arial,sans-serif;font-weight:700;color:#ffffff;font-size:20px;padding-left:10px">
-                                SecureApp
-                            </span>
+            <!DOCTYPE html>
+            <html lang="en">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>Verify Your Email</title>
+            </head>
+            <body style="margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;background-color:#f4f4f7;">
+                <table role="presentation" width="100%%" cellspacing="0" cellpadding="0" border="0" style="background-color:#f4f4f7;">
+                    <tr>
+                        <td style="padding:40px 20px;">
+                            <table role="presentation" width="100%%" cellspacing="0" cellpadding="0" border="0" style="max-width:600px;margin:0 auto;background-color:#ffffff;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.05);">
+                                <!-- Header -->
+                                <tr>
+                                    <td style="padding:40px 40px 30px;text-align:center;border-bottom:1px solid #e8e8e8;">
+                                        <h1 style="margin:0;font-size:24px;font-weight:600;color:#1a1a1a;">SecureApp</h1>
+                                    </td>
+                                </tr>
+                                
+                                <!-- Content -->
+                                <tr>
+                                    <td style="padding:40px;">
+                                        <h2 style="margin:0 0 16px;font-size:20px;font-weight:600;color:#1a1a1a;">Verify your email address</h2>
+                                        <p style="margin:0 0 16px;font-size:16px;line-height:24px;color:#4a4a4a;">Hi %s,</p>
+                                        <p style="margin:0 0 24px;font-size:16px;line-height:24px;color:#4a4a4a;">Thanks for signing up! Please verify your email address by clicking the button below to activate your account.</p>
+                                        
+                                        <!-- CTA Button -->
+                                        <table role="presentation" width="100%%" cellspacing="0" cellpadding="0" border="0">
+                                            <tr>
+                                                <td style="padding:0 0 24px;">
+                                                    <a href="%s" style="display:inline-block;padding:14px 32px;background-color:#5469d4;color:#ffffff;text-decoration:none;border-radius:6px;font-size:16px;font-weight:600;text-align:center;">Verify Email Address</a>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                        
+                                        <!-- Alternative Link -->
+                                        <p style="margin:0 0 16px;font-size:14px;line-height:20px;color:#6b7280;">Or copy and paste this link into your browser:</p>
+                                        <p style="margin:0 0 24px;font-size:14px;line-height:20px;color:#5469d4;word-break:break-all;">%s</p>
+                                        
+                                        <!-- Expiry Notice -->
+                                        <table role="presentation" width="100%%" cellspacing="0" cellpadding="0" border="0" style="background-color:#f9fafb;border-radius:6px;padding:16px;margin:0 0 24px;">
+                                            <tr>
+                                                <td style="font-size:14px;line-height:20px;color:#6b7280;">
+                                                    ⏱️ This verification link will expire in <strong>24 hours</strong> for security reasons.
+                                                </td>
+                                            </tr>
+                                        </table>
+                                        
+                                        <p style="margin:0;font-size:14px;line-height:20px;color:#6b7280;">If you didn't create an account with us, you can safely ignore this email.</p>
+                                    </td>
+                                </tr>
+                                
+                                <!-- Footer -->
+                                <tr>
+                                    <td style="padding:30px 40px;background-color:#f9fafb;border-top:1px solid #e8e8e8;border-radius:0 0 8px 8px;">
+                                        <p style="margin:0 0 8px;font-size:13px;line-height:18px;color:#9ca3af;">Questions? Contact us at support@secureapp.com</p>
+                                        <p style="margin:0;font-size:13px;line-height:18px;color:#9ca3af;">© 2024 SecureApp. All rights reserved.</p>
+                                    </td>
+                                </tr>
+                            </table>
                         </td>
-                      </tr></tbody>
-                    </table>
-                  </td>
-                </tr></tbody>
-              </table>
-              <table role="presentation" class="content" align="center" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;max-width:580px;width:100%%!important" width="100%%">
-                <tbody><tr>
-                  <td width="10" height="10" valign="middle"></td>
-                  <td>
-                    <table role="presentation" width="100%%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse">
-                      <tbody><tr>
-                        <td bgcolor="#1D70B8" width="100%%" height="10"></td>
-                      </tr></tbody>
-                    </table>
-                  </td>
-                  <td width="10" valign="middle" height="10"></td>
-                </tr></tbody>
-              </table>
-              <table role="presentation" class="content" align="center" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;max-width:580px;width:100%%!important" width="100%%">
-                <tbody><tr>
-                  <td height="30"><br></td>
-                </tr>
-                <tr>
-                  <td width="10" valign="middle"><br></td>
-                  <td style="font-family:Helvetica,Arial,sans-serif;font-size:19px;line-height:1.315789474;max-width:560px">
-                    <p style="Margin:0 0 20px 0;font-size:19px;line-height:25px;color:#0b0c0c">Hi %s,</p>
-                    <p style="Margin:0 0 20px 0;font-size:19px;line-height:25px;color:#0b0c0c"> Thank you for registering. Please click on the below link to activate your account: </p>
-                    <blockquote style="Margin:0 0 20px 0;border-left:10px solid #b1b4b6;padding:15px 0 0.1px 15px;font-size:19px;line-height:25px">
-                      <p style="Margin:0 0 20px 0;font-size:19px;line-height:25px;color:#0b0c0c"> <a href="%s">Activate Now</a> </p>
-                    </blockquote>
-                    <p>Link will expire in 24 hours.</p>
-                  </td>
-                  <td width="10" valign="middle"><br></td>
-                </tr>
-                <tr>
-                  <td height="30"><br></td>
-                </tr>
-                </tbody>
-              </table>
-            </div>
-            """.formatted(username, link);
+                    </tr>
+                </table>
+            </body>
+            </html>
+            """.formatted(username, link, link);
+    }
+
+    private String buildPasswordResetEmailTemplate(String username, String resetLink) {
+        return """
+            <!DOCTYPE html>
+            <html lang="en">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>Reset Your Password</title>
+            </head>
+            <body style="margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;background-color:#f4f4f7;">
+                <table role="presentation" width="100%%" cellspacing="0" cellpadding="0" border="0" style="background-color:#f4f4f7;">
+                    <tr>
+                        <td style="padding:40px 20px;">
+                            <table role="presentation" width="100%%" cellspacing="0" cellpadding="0" border="0" style="max-width:600px;margin:0 auto;background-color:#ffffff;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.05);">
+                                <!-- Header -->
+                                <tr>
+                                    <td style="padding:40px 40px 30px;text-align:center;border-bottom:1px solid #e8e8e8;">
+                                        <h1 style="margin:0;font-size:24px;font-weight:600;color:#1a1a1a;">SecureApp</h1>
+                                    </td>
+                                </tr>
+                                
+                                <!-- Content -->
+                                <tr>
+                                    <td style="padding:40px;">
+                                        <h2 style="margin:0 0 16px;font-size:20px;font-weight:600;color:#1a1a1a;">Reset your password</h2>
+                                        <p style="margin:0 0 16px;font-size:16px;line-height:24px;color:#4a4a4a;">Hi %s,</p>
+                                        <p style="margin:0 0 24px;font-size:16px;line-height:24px;color:#4a4a4a;">We received a request to reset your password. Click the button below to create a new password.</p>
+                                        
+                                        <!-- CTA Button -->
+                                        <table role="presentation" width="100%%" cellspacing="0" cellpadding="0" border="0">
+                                            <tr>
+                                                <td style="padding:0 0 24px;">
+                                                    <a href="%s" style="display:inline-block;padding:14px 32px;background-color:#5469d4;color:#ffffff;text-decoration:none;border-radius:6px;font-size:16px;font-weight:600;text-align:center;">Reset Password</a>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                        
+                                        <!-- Alternative Link -->
+                                        <p style="margin:0 0 16px;font-size:14px;line-height:20px;color:#6b7280;">Or copy and paste this link into your browser:</p>
+                                        <p style="margin:0 0 24px;font-size:14px;line-height:20px;color:#5469d4;word-break:break-all;">%s</p>
+                                        
+                                        <!-- Expiry Notice -->
+                                        <table role="presentation" width="100%%" cellspacing="0" cellpadding="0" border="0" style="background-color:#fef3c7;border-left:4px solid #f59e0b;padding:16px;margin:0 0 24px;">
+                                            <tr>
+                                                <td style="font-size:14px;line-height:20px;color:#92400e;">
+                                                    <strong>⚠️ Security Notice:</strong> This link will expire in <strong>15 minutes</strong>.
+                                                </td>
+                                            </tr>
+                                        </table>
+                                        
+                                        <!-- Security Notice -->
+                                        <table role="presentation" width="100%%" cellspacing="0" cellpadding="0" border="0" style="background-color:#f9fafb;border-radius:6px;padding:16px;margin:0 0 24px;">
+                                            <tr>
+                                                <td style="font-size:14px;line-height:20px;color:#6b7280;">
+                                                    <strong>Didn't request this?</strong><br/>
+                                                    If you didn't request a password reset, you can safely ignore this email. Your password will remain unchanged.
+                                                </td>
+                                            </tr>
+                                        </table>
+                                        
+                                        <p style="margin:0;font-size:14px;line-height:20px;color:#9ca3af;">For security reasons, never share this link with anyone.</p>
+                                    </td>
+                                </tr>
+                                
+                                <!-- Footer -->
+                                <tr>
+                                    <td style="padding:30px 40px;background-color:#f9fafb;border-top:1px solid #e8e8e8;border-radius:0 0 8px 8px;">
+                                        <p style="margin:0 0 8px;font-size:13px;line-height:18px;color:#9ca3af;">Questions? Contact us at support@secureapp.com</p>
+                                        <p style="margin:0;font-size:13px;line-height:18px;color:#9ca3af;">© 2024 SecureApp. All rights reserved.</p>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                </table>
+            </body>
+            </html>
+            """.formatted(username, resetLink, resetLink);
     }
 }
