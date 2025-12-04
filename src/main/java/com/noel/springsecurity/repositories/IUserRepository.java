@@ -11,8 +11,5 @@ public interface IUserRepository extends JpaRepository<User, UUID> {
 
     boolean existsByEmail(String email);
 
-    // For the "Verify Account" link flow
-    Optional<User> findByVerificationToken(String verificationToken);
-
     Optional<User> findByPasswordResetToken(String passwordResetToken);
 }
