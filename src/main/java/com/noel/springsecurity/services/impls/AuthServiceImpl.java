@@ -6,8 +6,6 @@ import com.noel.springsecurity.dto.request.RegisterRequest;
 import com.noel.springsecurity.entities.RefreshToken;
 import com.noel.springsecurity.entities.User;
 import com.noel.springsecurity.enums.ERole;
-import com.noel.springsecurity.events.PasswordResetRequestedEvent;
-import com.noel.springsecurity.events.RegistrationCompleteEvent;
 import com.noel.springsecurity.exceptions.ResourceNotFoundException;
 import com.noel.springsecurity.exceptions.TokenRefreshException;
 import com.noel.springsecurity.exceptions.UserAlreadyExistsException;
