@@ -63,7 +63,7 @@ public class JwtService {
 
     // Validates Standard Access Tokens
     public boolean isTokenValid(String token, UserDetails userDetails) {
-        final String tokenUserId = extractUserId(token);
+        final String tokenUserId = extractUserSubject(token);
         if (isTokenExpired(token)) {
             return false;
         }
@@ -90,7 +90,7 @@ public class JwtService {
     }
 
     // --- Extraction Logic ---
-    public String extractUserId(String token) {
+    public String extractUserSubject(String token) {
         return extractClaim(token, Claims::getSubject);
     }
 
