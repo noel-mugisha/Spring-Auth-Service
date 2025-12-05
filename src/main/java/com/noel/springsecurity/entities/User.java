@@ -15,7 +15,7 @@ import java.time.LocalDateTime;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class User extends BaseEntity{
+public class User extends BaseEntity {
 
     @Column(name = "first_name", nullable = false)
     private String firstName;
@@ -33,17 +33,10 @@ public class User extends BaseEntity{
     @Column(nullable = false)
     private ERole role;
 
-    // --- Email Verification Fields ---
     @Column(name = "is_enabled", nullable = false)
     private boolean isEnabled = false;
 
-    @Column(name = "verification_token")
-    private String verificationToken;
-
-    @Column(name = "verification_token_expiry")
-    private LocalDateTime verificationTokenExpiry;
-
-    // -- Password Reset Fields ---
+    // --- Password Reset Fields ---
     @Column(name = "password_reset_token")
     private String passwordResetToken;
 

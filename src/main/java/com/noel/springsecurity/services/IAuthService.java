@@ -6,23 +6,28 @@ import com.noel.springsecurity.dto.request.RegisterRequest;
 
 public interface IAuthService {
 
-    UserDto register(RegisterRequest request);
+    // Send OTP
+    void sendRegistrationOtp(String email);
 
-    void verifyEmail(String token);
+    // Verify OTP and get Pre-Auth Token
+    String verifyOtp(String email, String otp);
 
+    // Complete Registration using Pre-Auth Token
+    AuthResult register(RegisterRequest request, String preAuthToken);
+
+    // Standard Login
     AuthResult login(LoginRequest request);
 
+    // Token Management
     AuthResult refreshToken(String incomingRefreshToken);
-
     void logout(String incomingRefreshToken);
 
+    // Password Reset
     void requestPasswordReset(String email);
-
     void resetPassword(String token, String newPassword);
 
-
     /**
-     * Internal DTO to carry tokens and user data from Service to Controller.
+     * Data Carrier for Login/Register success
      */
     record AuthResult(String accessToken, String refreshToken, UserDto user) {}
 }

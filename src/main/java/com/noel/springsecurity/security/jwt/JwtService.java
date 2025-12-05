@@ -1,6 +1,7 @@
 package com.noel.springsecurity.security.jwt;
 
 import com.noel.springsecurity.entities.User;
+import com.noel.springsecurity.security.UserPrincipal;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
@@ -20,10 +21,15 @@ import java.util.function.Function;
 public class JwtService {
     @Value("${app.security.jwt.secret-key}")
     private String secretKey;
+
     @Value("${app.security.jwt.access-token-expiration}")
     private long accessTokenExpiration;
 
-    // --- Token Generation ---
+    private static final String SCOPE_CLAIM_NAME = "scope";
+    private static final String REGISTRATION_SCOPE = "PRE_AUTH_REGISTRATION";
+    private static final long REGISTRATION_TOKEN_EXPIRATION = 600000; // 10 minutes (in ms)
+
+    // Access Token
     public String generateAccessToken(User user) {
         Map<String, Object> claims = new HashMap<>();
         claims.put("role", user.getRole().name());
@@ -31,9 +37,20 @@ public class JwtService {
 
         return buildToken(claims, user.getId().toString(), accessTokenExpiration);
     }
+
+    // Refresh Token
     public String generateRefreshToken() {
         return UUID.randomUUID().toString();
     }
+
+    // Registration Token
+    public String generateRegistrationToken(String email) {
+        Map<String, Object> claims = new HashMap<>();
+        claims.put(SCOPE_CLAIM_NAME, REGISTRATION_SCOPE);
+        return buildToken(claims, email, REGISTRATION_TOKEN_EXPIRATION);
+    }
+
+    // --- Helper to build tokens ---
     private String buildToken(Map<String, Object> extraClaims, String subject, long expiration) {
         return Jwts.builder()
                 .claims(extraClaims)
@@ -44,16 +61,36 @@ public class JwtService {
                 .compact();
     }
 
-    // --- Token Validation ---
+    // Validates Standard Access Tokens
     public boolean isTokenValid(String token, UserDetails userDetails) {
-        return !isTokenExpired(token);
+        final String tokenUserId = extractUserSubject(token);
+        if (isTokenExpired(token)) {
+            return false;
+        }
+        if (userDetails instanceof UserPrincipal userPrincipal) {
+            return tokenUserId.equals(userPrincipal.getId().toString());
+        }
+        // Fallback: If for some reason we aren't using UserPrincipal (e.g., testing)
+        return tokenUserId.equals(userDetails.getUsername());
     }
+
+    // Validates the specific Registration Scope
+    public boolean isRegistrationToken(String token) {
+        try {
+            if (isTokenExpired(token)) return false;
+            String scope = extractClaim(token, claims -> claims.get(SCOPE_CLAIM_NAME, String.class));
+            return REGISTRATION_SCOPE.equals(scope);
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
     public boolean isTokenExpired(String token) {
         return extractExpiration(token).before(new Date());
     }
 
-    // --- Claims Extraction ---
-    public String extractUserId(String token) {
+    // --- Extraction Logic ---
+    public String extractUserSubject(String token) {
         return extractClaim(token, Claims::getSubject);
     }
 
