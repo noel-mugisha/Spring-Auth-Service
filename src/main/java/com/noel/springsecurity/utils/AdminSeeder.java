@@ -30,7 +30,6 @@ public class AdminSeeder implements CommandLineRunner {
     @Value("${app.seed.admin.password}")
     private String adminPassword;
 
-
     @Override
     @Transactional
     public void run(String... args) throws Exception {
@@ -39,30 +38,26 @@ public class AdminSeeder implements CommandLineRunner {
             return;
         }
 
-        createSuperAdmin();
+        createAdmin();
     }
 
-    private void createSuperAdmin() {
+    private void createAdmin() {
         Optional<User> existingAdmin = userRepository.findByEmail(adminEmail);
 
         if (existingAdmin.isPresent()) {
             log.info("Admin user ({}) already exists. Skipping seeding.", adminEmail);
             return;
         }
-
         log.info("Seeding Admin User...");
 
         User admin = new User();
+
         admin.setFirstName("System");
         admin.setLastName("Administrator");
         admin.setEmail(adminEmail);
         admin.setPassword(passwordEncoder.encode(adminPassword));
         admin.setRole(ERole.ADMIN);
-
         admin.setEnabled(true);
-        admin.setVerificationToken(null);
-        admin.setVerificationTokenExpiry(null);
-
         userRepository.save(admin);
 
         log.info("Admin User created successfully! Email: {}", adminEmail);

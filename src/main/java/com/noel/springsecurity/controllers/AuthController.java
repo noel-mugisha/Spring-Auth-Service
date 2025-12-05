@@ -38,7 +38,7 @@ public class AuthController {
         return ResponseEntity.ok(new OtpResponse(tempToken));
     }
 
-    // --- STEP 3: Complete Registration ---
+    // registration
     @PostMapping("/register")
     public ResponseEntity<AuthResponse> register(
             @RequestHeader(HttpHeaders.AUTHORIZATION) String authHeader,
