@@ -18,7 +18,7 @@ A production-ready authentication and user management service for modern backend
 - HttpOnly, Secure cookies for refresh tokens (XSS-safe)
 - Hashed (SHA-256) refresh tokens stored in DB
 - Rate limiting on authentication endpoints (Bucket4j)
-- Event-driven email verification and password reset
+- Event-driven email OTP registration and password reset
 - RBAC with method-level security (@PreAuthorize)
 - Versioned schema management with Flyway
 - OpenAPI/Swagger UI out of the box
@@ -41,8 +41,9 @@ A production-ready authentication and user management service for modern backend
 ## API Surface 🔗
 
 Public
-- POST /api/v1/auth/register — register a new user
-- POST /api/v1/auth/verify-email?token=... — verify email
+- POST /api/v1/auth/send-otp — send registration OTP to email
+- POST /api/v1/auth/verify-otp — verify OTP; returns a temporary preAuth token
+- POST /api/v1/auth/register — complete registration; requires `Authorization: Bearer <preAuth-token>`
 - POST /api/v1/auth/login — login; returns access token (JSON) and sets refresh token cookie
 - POST /api/v1/auth/refresh — rotate refresh token and return new access token
 - POST /api/v1/auth/logout — revoke refresh token and clear cookie
@@ -56,6 +57,9 @@ Protected
 OpenAPI
 - UI: http://localhost:8080/swagger-ui.html
 - JSON: http://localhost:8080/v3/api-docs
+
+Registration flow (summary)
+- Send OTP → Verify OTP → Receive preAuth token → Call Register with `Authorization: Bearer <preAuth-token>` → Receive access token + refresh cookie
 
 ---
 
@@ -103,6 +107,10 @@ Database migrations run automatically via Flyway on startup.
 - Rotation: each /refresh call invalidates previous token and issues a new one
 - Rate limiting: 10 requests/minute per IP on /api/v1/auth/**
 - CORS: allowed origins configured via FRONTEND_URL
+
+Additional details
+- Pre-registration security: a short-lived preAuth registration token (issued by `verify-otp`) is recognized by the JWT filter and allowed only for completing `/auth/register`. It cannot access protected resources.
+- Cookie name: refresh token is set as `refresh_token` with HttpOnly, Secure, SameSite attributes appropriate for cross-site usage with CORS.
 
 ---
 
