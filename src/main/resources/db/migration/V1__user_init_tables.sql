@@ -14,13 +14,20 @@ CREATE TABLE users (
                        first_name VARCHAR(100) NOT NULL,
                        last_name VARCHAR(100) NOT NULL,
                        email VARCHAR(255) NOT NULL UNIQUE,
-                       password VARCHAR(255) NOT NULL,
+
+    -- Password is NULLABLE (For Social Login users)
+                       password VARCHAR(255),
+
                        role VARCHAR(50) NOT NULL,
+
+    -- OAuth2 / Social Auth Fields
+                       oauth_provider VARCHAR(50),
+                       oauth_id VARCHAR(255),
 
     -- Status
                        is_enabled BOOLEAN NOT NULL DEFAULT FALSE,
 
-    -- Password Reset (Keep this separate from registration)
+    -- Password Reset
                        password_reset_token VARCHAR(255),
                        password_reset_token_expiry TIMESTAMP,
 
@@ -33,7 +40,10 @@ CREATE TABLE users (
 CREATE INDEX idx_users_email ON users(email);
 CREATE INDEX idx_users_pwd_reset ON users(password_reset_token);
 
--- 3. Refresh Tokens Table (Unchanged)
+-- Composite Index for fast OIDC lookups (Provider + Sub)
+CREATE INDEX idx_users_oauth ON users(oauth_provider, oauth_id);
+
+-- 3. Refresh Tokens Table
 CREATE TABLE refresh_tokens (
                                 id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                                 user_id UUID NOT NULL,

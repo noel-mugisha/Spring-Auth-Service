@@ -14,11 +14,11 @@ import com.noel.springsecurity.exceptions.TokenRefreshException;
 import com.noel.springsecurity.exceptions.UserAlreadyExistsException;
 import com.noel.springsecurity.mappers.IUserMapper;
 import com.noel.springsecurity.repositories.IEmailVerificationRepository;
-import com.noel.springsecurity.repositories.IRefreshTokenRepository;
 import com.noel.springsecurity.repositories.IUserRepository;
 import com.noel.springsecurity.security.UserPrincipal;
 import com.noel.springsecurity.security.jwt.JwtService;
 import com.noel.springsecurity.services.IAuthService;
+import com.noel.springsecurity.services.IRefreshTokenService;
 import com.noel.springsecurity.utils.TokenHashUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -40,17 +40,14 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 public class AuthServiceImpl implements IAuthService {
-
     private final IUserRepository userRepository;
     private final IEmailVerificationRepository emailVerificationRepository;
-    private final IRefreshTokenRepository refreshTokenRepository;
+    private final IRefreshTokenService refreshTokenService;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
     private final ApplicationEventPublisher eventPublisher;
     private final IUserMapper userMapper;
-    @Value("${app.security.jwt.refresh-token-expiration}")
-    private long refreshTokenDurationMs;
     @Value("${app.security.email.reset-password-expiration}")
     private int resetPasswordExpirationMinutes;
     @Value("${app.security.email.reset-password-url}")
@@ -65,7 +62,6 @@ public class AuthServiceImpl implements IAuthService {
         }
         // Generate Secure OTP
         String otp = String.format("%06d", new SecureRandom().nextInt(999999));
-
         // Save OTP in the database
         EmailVerification verification = new EmailVerification(
                 email,
@@ -82,14 +78,11 @@ public class AuthServiceImpl implements IAuthService {
     @Override
     @Transactional
     public String verifyOtp(String email, String otp) {
-        // Find OTP Record
         EmailVerification verification = emailVerificationRepository.findByEmail(email)
                 .orElseThrow(() -> new ResourceNotFoundException("Invalid email or OTP not found"));
-        // Check Expiry
         if (verification.getExpiryDate().isBefore(LocalDateTime.now())) {
             throw new LinkExpiredException("OTP has expired. Please request a new one.");
         }
-        // Verify Match
         if (!verification.getOtpCode().equals(otp)) {
             throw new BadCredentialsException("Invalid OTP code.");
         }
@@ -103,18 +96,14 @@ public class AuthServiceImpl implements IAuthService {
     @Override
     @Transactional
     public AuthResult register(RegisterRequest request, String preAuthToken) {
-        // Validate the Pre-Auth Token
         if (jwtService.isTokenExpired(preAuthToken) || !jwtService.isRegistrationToken(preAuthToken)) {
             throw new BadCredentialsException("Invalid or expired registration session.");
         }
-        // Extract Email from Token (Trust Source)
         String email = jwtService.extractUserSubject(preAuthToken);
-        // Double-check existence (Race condition safety)
         if (userRepository.existsByEmail(email)) {
             throw new UserAlreadyExistsException("Email already in use.");
         }
-
-        // 4. Create User
+        // Create User
         User user = new User();
         user.setFirstName(request.firstName());
         user.setLastName(request.lastName());
@@ -124,10 +113,8 @@ public class AuthServiceImpl implements IAuthService {
         user.setEnabled(true);
 
         User savedUser = userRepository.save(user);
-
-        // Auto-Login (Generate Tokens)
         String accessToken = jwtService.generateAccessToken(savedUser);
-        String refreshToken = createRefreshToken(savedUser);
+        String refreshToken = refreshTokenService.createRefreshToken(savedUser);
 
         return new AuthResult(accessToken, refreshToken, userMapper.toDto(savedUser));
     }
@@ -146,12 +133,10 @@ public class AuthServiceImpl implements IAuthService {
         } catch (DisabledException e) {
             throw new DisabledException("Account is disabled.");
         }
-
         UserPrincipal principal = (UserPrincipal) authentication.getPrincipal();
         User user = principal.getUser();
-
         String accessToken = jwtService.generateAccessToken(user);
-        String refreshToken = createRefreshToken(user);
+        String refreshToken = refreshTokenService.createRefreshToken(user);
 
         return new AuthResult(accessToken, refreshToken, userMapper.toDto(user));
     }
@@ -160,24 +145,17 @@ public class AuthServiceImpl implements IAuthService {
     @Override
     @Transactional
     public AuthResult refreshToken(String incomingRefreshToken) {
-        String tokenHash = TokenHashUtil.hashToken(incomingRefreshToken);
-        RefreshToken existingToken = refreshTokenRepository.findByTokenHash(tokenHash)
+        RefreshToken existingToken = refreshTokenService.findByToken(incomingRefreshToken)
                 .orElseThrow(() -> new TokenRefreshException("Invalid refresh token"));
-
-        if (existingToken.isRevoked()) {
-            refreshTokenRepository.delete(existingToken);
-            throw new TokenRefreshException("Refresh token expired. Please login again.");
-        }
-
+        refreshTokenService.verifyExpiration(existingToken);
         User user = existingToken.getUser();
         if (!user.isEnabled()) {
             throw new TokenRefreshException("User account is disabled");
         }
-
-        // Rotate Token
-        refreshTokenRepository.delete(existingToken);
+        // Rotate Token - delete old, create new
+        refreshTokenService.delete(existingToken);
         String newAccessToken = jwtService.generateAccessToken(user);
-        String newRefreshToken = createRefreshToken(user);
+        String newRefreshToken = refreshTokenService.createRefreshToken(user);
 
         return new AuthResult(newAccessToken, newRefreshToken, userMapper.toDto(user));
     }
@@ -187,8 +165,7 @@ public class AuthServiceImpl implements IAuthService {
     @Transactional
     public void logout(String incomingRefreshToken) {
         if (incomingRefreshToken == null) return;
-        String tokenHash = TokenHashUtil.hashToken(incomingRefreshToken);
-        refreshTokenRepository.deleteByTokenHash(tokenHash);
+        refreshTokenService.deleteByToken(incomingRefreshToken);
         SecurityContextHolder.clearContext();
     }
 
@@ -199,16 +176,14 @@ public class AuthServiceImpl implements IAuthService {
         userRepository.findByEmail(email).ifPresent(user -> {
             String rawToken = UUID.randomUUID().toString();
             String hashedToken = TokenHashUtil.hashToken(rawToken);
-
             user.setPasswordResetToken(hashedToken);
             user.setPasswordResetTokenExpiry(
                     LocalDateTime.now().plusMinutes(resetPasswordExpirationMinutes)
             );
             userRepository.save(user);
 
-            // Prepare Email Data
             String fullName = user.getFirstName() + " " + user.getLastName();
-            String link = passwordResetLink + "?token=" + rawToken; // reset password link
+            String link = passwordResetLink + "?token=" + rawToken;
             // Publish Async Event
             eventPublisher.publishEvent(new PasswordResetEvent(user.getEmail(), fullName, link));
         });
@@ -221,31 +196,14 @@ public class AuthServiceImpl implements IAuthService {
         String hashedToken = TokenHashUtil.hashToken(token);
         User user = userRepository.findByPasswordResetToken(hashedToken)
                 .orElseThrow(() -> new ResourceNotFoundException("Invalid or expired password reset token"));
-
         if (user.getPasswordResetTokenExpiry().isBefore(LocalDateTime.now())) {
             throw new LinkExpiredException("Password reset link has expired");
         }
-
         user.setPassword(passwordEncoder.encode(newPassword));
         user.setPasswordResetToken(null);
         user.setPasswordResetTokenExpiry(null);
         userRepository.save(user);
-
-        // Security: Revoke all sessions to force re-login with new password
-        refreshTokenRepository.deleteByUser(user);
-    }
-
-    // Helper method to create a new refresh token
-    private String createRefreshToken(User user) {
-        String rawToken = jwtService.generateRefreshToken();
-        String hashedToken = TokenHashUtil.hashToken(rawToken);
-
-        RefreshToken refreshToken = new RefreshToken();
-        refreshToken.setUser(user);
-        refreshToken.setTokenHash(hashedToken);
-        refreshToken.setExpiresAt(LocalDateTime.now().plusNanos(refreshTokenDurationMs * 1000000));
-
-        refreshTokenRepository.save(refreshToken);
-        return rawToken;
+        // Security: Revoke all sessions to force re-login with a new password
+        refreshTokenService.deleteByUser(user);
     }
 }

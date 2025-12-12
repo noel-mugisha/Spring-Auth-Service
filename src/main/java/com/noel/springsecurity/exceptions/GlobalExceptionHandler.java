@@ -1,6 +1,9 @@
 package com.noel.springsecurity.exceptions;
 
 import com.noel.springsecurity.dto.response.ApiErrorResponse;
+import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.JwtException;
+import io.jsonwebtoken.security.SignatureException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -12,9 +15,6 @@ import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-import io.jsonwebtoken.ExpiredJwtException;
-import io.jsonwebtoken.security.SignatureException;
-import io.jsonwebtoken.JwtException;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -57,7 +57,7 @@ public class GlobalExceptionHandler {
     // Handle Bad Credentials (Login fail)
     @ExceptionHandler(BadCredentialsException.class)
     public ResponseEntity<ApiErrorResponse> handleBadCredentials(BadCredentialsException ex) {
-        return buildResponse(HttpStatus.UNAUTHORIZED, "Invalid email or password");
+        return buildResponse(HttpStatus.UNAUTHORIZED, ex.getMessage());
     }
 
     // Handle Disabled Account (Email not verified)
@@ -86,11 +86,13 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiErrorResponse> handleExpiredJwt(ExpiredJwtException ex) {
         return buildResponse(HttpStatus.UNAUTHORIZED, "Token has expired. Please refresh your session.");
     }
+
     // Handle Invalid Signature / Malformed Token (Security)
     @ExceptionHandler({SignatureException.class, io.jsonwebtoken.MalformedJwtException.class, io.jsonwebtoken.security.SecurityException.class})
     public ResponseEntity<ApiErrorResponse> handleInvalidJwt(Exception ex) {
         return buildResponse(HttpStatus.UNAUTHORIZED, "Invalid authentication token.");
     }
+
     // Catch-all for other JWT errors
     @ExceptionHandler(JwtException.class)
     public ResponseEntity<ApiErrorResponse> handleGenericJwt(JwtException ex) {
@@ -119,8 +121,6 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiErrorResponse> requestMethodNotAllowed(HttpRequestMethodNotSupportedException ex) {
         return buildResponse(HttpStatus.METHOD_NOT_ALLOWED, "Method not allowed for this resource.");
     }
-
-
 
 
     // Fallback for everything else

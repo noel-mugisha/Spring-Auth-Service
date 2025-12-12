@@ -3,6 +3,7 @@ package com.noel.springsecurity.config;
 import com.noel.springsecurity.filters.JwtAuthenticationFilter;
 import com.noel.springsecurity.filters.RateLimitingFilter;
 import com.noel.springsecurity.security.CustomUserDetailsService;
+import com.noel.springsecurity.security.oauth2.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -36,6 +37,11 @@ public class SecurityConfig {
     private final RateLimitingFilter rateLimitingFilter;
     private final JwtAuthenticationFilter jwtAuthFilter;
     private final CustomUserDetailsService userDetailsService;
+    private final CustomOAuth2UserService customOAuth2UserService;
+    private final OAuth2SuccessHandler oAuth2SuccessHandler;
+    private final HttpCookieOAuth2AuthorizationRequestRepository cookieAuthorizationRequestRepository;
+    private final OAuth2FailureHandler oAuth2FailureHandler;
+    private final CustomOidcUserService customOidcUserService;
 
     @Value("${app.security.cors.allowed-origins}")
     private String allowedOrigins;
@@ -45,24 +51,42 @@ public class SecurityConfig {
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                // Stateless Session
+                .sessionManagement(session ->
+                        session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                )
                 .authorizeHttpRequests(auth -> auth
                         // Public Endpoints
                         .requestMatchers("/api/v1/auth/**").permitAll()
-                        // Public Swagger Endpoints (Optional, useful for testing)
+                        .requestMatchers("/oauth2/**").permitAll() // Allow OAuth redirects
                         .requestMatchers(SWAGGER_WHITELIST).permitAll()
                         // Any other request requires authentication
                         .anyRequest().authenticated()
                 )
-                // Exception Handling
+                // OAuth2 Login Configuration
+                .oauth2Login(oauth2 -> oauth2
+                        .authorizationEndpoint(authorization -> authorization
+                                .baseUri("/oauth2/authorization")
+                                .authorizationRequestRepository(cookieAuthorizationRequestRepository)
+                        )
+                        .redirectionEndpoint(redirection -> redirection
+                                .baseUri("/login/oauth2/code/*")
+                        )
+                        .userInfoEndpoint(userInfo -> userInfo
+                                .oidcUserService(customOidcUserService)  // For OIDC
+                                .userService(customOAuth2UserService) // For non-OIDC
+
+                        )
+                        .successHandler(oAuth2SuccessHandler)
+                        .failureHandler(oAuth2FailureHandler)
+                )
                 .exceptionHandling(exc -> {
                     exc.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED));
                     exc.accessDeniedHandler(((request, response, accessDeniedException) ->
                             response.setStatus(HttpStatus.FORBIDDEN.value())));
                 })
-                // Add Rate Limit Filter FIRST
+                // Filters
                 .addFilterBefore(rateLimitingFilter, UsernamePasswordAuthenticationFilter.class)
-                // Add JWT Filter before the standard UsernamePassword filter
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
@@ -99,7 +123,6 @@ public class SecurityConfig {
         return source;
     }
 
-
     private static final String[] SWAGGER_WHITELIST = {
             "/v3/api-docs",
             "/v3/api-docs.yaml",
@@ -110,5 +133,4 @@ public class SecurityConfig {
             "/swagger-ui-oauth2-redirect.html",
             "/swagger-resources/**"
     };
-
 }

@@ -37,6 +37,18 @@ spring:
           timeout: 5000
           writetimeout: 5000
 
+  # OAuth2 Configuration
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: ${GOOGLE_CLIENT_ID}
+            client-secret: ${GOOGLE_CLIENT_SECRET}
+            redirect-uri: "{baseUrl}/login/oauth2/code/google"
+            scope: openid, email, profile
+            authorization-grant-type: authorization_code
+
 # Custom Security Configuration
 app:
   security:
@@ -46,15 +58,17 @@ app:
       refresh-token-expiration: 604800000  # 7 days (in ms)
 
     cors:
-      allowed-origins: ${FRONTEND_URL} # Your Frontend URL
+      allowed-origins: ${FRONTEND_URL}
+
+    oauth2:
+      redirect-uri: ${FRONTEND_URL}/dashboard
 
     email:
-      verification-url: ${FRONTEND_URL}/verify-email # Frontend Verification Page
       reset-password-url: ${FRONTEND_URL}/reset-password
       reset-password-expiration: 15  # 15 minutes
 
   seed:
-    enabled: true # Master switch
+    enabled: true
     admin:
       email: "admin@company.com"
       password: "ChangeMe123!"

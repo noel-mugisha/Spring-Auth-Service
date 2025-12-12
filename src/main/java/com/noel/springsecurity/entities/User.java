@@ -1,5 +1,6 @@
 package com.noel.springsecurity.entities;
 
+import com.noel.springsecurity.enums.EOAuthProvider;
 import com.noel.springsecurity.enums.ERole;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -26,20 +27,26 @@ public class User extends BaseEntity {
     @Column(nullable = false, unique = true)
     private String email;
 
-    @Column(nullable = false)
+    @Column(nullable = true)
     private String password;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private ERole role;
 
+    // OAuth Fields
+    @Enumerated(EnumType.STRING)
+    @Column(name = "oauth_provider")
+    private EOAuthProvider oauthProvider;
+    @Column(name = "oauth_id")
+    private String oauthId;
+
     @Column(name = "is_enabled", nullable = false)
     private boolean isEnabled = false;
 
-    // --- Password Reset Fields ---
+    // Password Reset Fields
     @Column(name = "password_reset_token")
     private String passwordResetToken;
-
     @Column(name = "password_reset_token_expiry")
     private LocalDateTime passwordResetTokenExpiry;
 }
