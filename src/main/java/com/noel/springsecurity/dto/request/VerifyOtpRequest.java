@@ -9,7 +9,6 @@ public record VerifyOtpRequest(
         @Email(message = "Invalid email format")
         @LowerCase
         String email,
-
         @NotBlank(message = "OTP is required")
         String otp
 ) {}

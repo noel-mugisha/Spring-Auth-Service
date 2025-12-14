@@ -19,15 +19,14 @@ import java.util.function.Function;
 
 @Service
 public class JwtService {
-    @Value("${app.security.jwt.secret-key}")
-    private String secretKey;
-
-    @Value("${app.security.jwt.access-token-expiration}")
-    private long accessTokenExpiration;
-
     private static final String SCOPE_CLAIM_NAME = "scope";
     private static final String REGISTRATION_SCOPE = "PRE_AUTH_REGISTRATION";
-    private static final long REGISTRATION_TOKEN_EXPIRATION = 600000; // 10 minutes (in ms)
+    @Value("${app.security.jwt.registration-token-expiration}")
+    private long registrationTokenExpiration;
+    @Value("${app.security.jwt.secret-key}")
+    private String secretKey;
+    @Value("${app.security.jwt.access-token-expiration}")
+    private long accessTokenExpiration;
 
     // Access Token
     public String generateAccessToken(User user) {
@@ -47,7 +46,7 @@ public class JwtService {
     public String generateRegistrationToken(String email) {
         Map<String, Object> claims = new HashMap<>();
         claims.put(SCOPE_CLAIM_NAME, REGISTRATION_SCOPE);
-        return buildToken(claims, email, REGISTRATION_TOKEN_EXPIRATION);
+        return buildToken(claims, email, registrationTokenExpiration);
     }
 
     // --- Helper to build tokens ---

@@ -29,17 +29,12 @@ public class RateLimitingFilter extends OncePerRequestFilter {
             @NonNull FilterChain filterChain
     ) throws ServletException, IOException {
 
-        // Only apply to Auth endpoints (Login/Register/Reset)
-        // We don't want to limit authenticated API calls (like /me) here,
-        // as those are already protected by JWT validation cost.
+        // Only apply to Auth endpoints
         if (request.getRequestURI().startsWith("/api/v1/auth")) {
-
             // Identify the Client (IP Address)
             String clientIp = getClientIp(request);
-
             // Get their bucket
             Bucket bucket = rateLimitingService.resolveBucket(clientIp);
-
             // Try to consume 1 token
             if (bucket.tryConsume(1)) {
                 // Success: Proceed

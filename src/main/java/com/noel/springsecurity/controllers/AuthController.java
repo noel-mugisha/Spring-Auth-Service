@@ -22,7 +22,7 @@ public class AuthController {
     private final IAuthService authService;
     private final CookieUtil cookieUtil;
 
-    // Send OTP ---
+    // Send OTP
     @PostMapping("/send-otp")
     public ResponseEntity<ApiMessageResponse> sendOtp(@Valid @RequestBody OtpRequest request) {
         authService.sendRegistrationOtp(request.email());
@@ -31,7 +31,7 @@ public class AuthController {
         ));
     }
 
-    // Verify OTP & Get preAuth-token ---
+    // Verify OTP & Get preAuth-token
     @PostMapping("/verify-otp")
     public ResponseEntity<OtpResponse> verifyOtp(@Valid @RequestBody VerifyOtpRequest request) {
         String tempToken = authService.verifyOtp(request.email(), request.otp());
