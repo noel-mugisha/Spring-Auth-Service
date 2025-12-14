@@ -5,61 +5,80 @@
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?style=flat-square&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 [![Flyway](https://img.shields.io/badge/Flyway-10.x-A41E11?style=flat-square&logo=flyway&logoColor=white)](https://flywaydb.org/)
 [![OpenAPI](https://img.shields.io/badge/OpenAPI-3-6BA539?style=flat-square&logo=openapi-initiative&logoColor=white)](https://swagger.io/specification/)
+[![Google OAuth2](https://img.shields.io/badge/Google%20OAuth2-4285F4?style=flat-square&logo=google&logoColor=white)](https://developers.google.com/identity/protocols/oauth2)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](LICENSE)
 
-A production-ready authentication and user management service for modern backends. It implements secure, scalable patterns including refresh token rotation via HttpOnly cookies, rate limiting, event-driven email workflows, and database migrations.
+A comprehensive, production-ready authentication and user management service built with Spring Boot. This service provides robust security features including JWT-based authentication, refresh token rotation with HttpOnly cookies, OAuth2 social login (Google), email verification with OTP, password reset workflows, rate limiting, and database migrations. Designed for modern web applications requiring secure, scalable user authentication and authorization.
 
 ---
 
 ## Highlights ✨
 
-- Refresh Token Rotation with one-time use and server-side revocation
-- Short-lived JWT Access Tokens (15 min) and stateless APIs
-- HttpOnly, Secure cookies for refresh tokens (XSS-safe)
-- Hashed (SHA-256) refresh tokens stored in DB
-- Rate limiting on authentication endpoints (Bucket4j)
-- Event-driven email OTP registration and password reset
-- RBAC with method-level security (@PreAuthorize)
-- Versioned schema management with Flyway
-- OpenAPI/Swagger UI out of the box
+- **Multi-Authentication Support**: JWT-based authentication with OAuth2 social login (Google)
+- **Secure Token Management**: Refresh token rotation with one-time use and server-side revocation
+- **Stateless APIs**: Short-lived JWT access tokens (15 min) with HttpOnly, Secure cookies for refresh tokens (XSS-safe)
+- **Hashed Token Storage**: SHA-256 hashed refresh tokens stored securely in database
+- **Rate Limiting**: Bucket4j-based rate limiting on authentication endpoints (10 requests/min per IP)
+- **Email Workflows**: Event-driven email OTP registration and password reset with secure links
+- **Role-Based Access Control**: RBAC with method-level security using @PreAuthorize annotations
+- **Database Migrations**: Versioned schema management with Flyway
+- **API Documentation**: OpenAPI/Swagger UI integration out of the box
+- **Social Authentication**: Seamless OAuth2 integration allowing users to authenticate via Google accounts
 
 ---
 
 ## Architecture & Tech Stack 🧩
 
-- Language: Java 21
-- Framework: Spring Boot 3.5.x, Spring Web, Spring Security
-- Database: PostgreSQL
-- Migrations: Flyway
-- JWT: JJWT 0.12.x
-- Rate Limiting: Bucket4j
-- Mapping/Boilerplate: MapStruct, Lombok
-- API Docs: springdoc-openapi
+- **Language**: Java 21
+- **Framework**: Spring Boot 3.5.x, Spring Web, Spring Security, Spring OAuth2 Client
+- **Database**: PostgreSQL 16
+- **Migrations**: Flyway 10.x
+- **JWT**: JJWT 0.12.x
+- **Rate Limiting**: Bucket4j
+- **Mapping/Boilerplate**: MapStruct, Lombok
+- **API Docs**: springdoc-openapi
+- **OAuth2**: Spring Security OAuth2 Client for social authentication
 
 ---
 
 ## API Surface 🔗
 
-Public
-- POST /api/v1/auth/send-otp — send registration OTP to email
-- POST /api/v1/auth/verify-otp — verify OTP; returns a temporary preAuth token
-- POST /api/v1/auth/register — complete registration; requires `Authorization: Bearer <preAuth-token>`
-- POST /api/v1/auth/login — login; returns access token (JSON) and sets refresh token cookie
-- POST /api/v1/auth/refresh — rotate refresh token and return new access token
-- POST /api/v1/auth/logout — revoke refresh token and clear cookie
-- POST /api/v1/auth/forgot-password — request password reset link
-- POST /api/v1/auth/reset-password — reset password using token
+### Authentication Endpoints
 
-Protected
-- GET /api/v1/users/me — current user profile
-- GET /api/v1/users — list users (ADMIN only)
+**Public Endpoints**
+- `POST /api/v1/auth/send-otp` — Send registration OTP to email
+- `POST /api/v1/auth/verify-otp` — Verify OTP; returns a temporary preAuth token
+- `POST /api/v1/auth/register` — Complete registration; requires `Authorization: Bearer <preAuth-token>`
+- `POST /api/v1/auth/login` — Traditional login; returns access token (JSON) and sets refresh token cookie
+- `POST /api/v1/auth/refresh` — Rotate refresh token and return new access token
+- `POST /api/v1/auth/logout` — Revoke refresh token and clear cookie
+- `POST /api/v1/auth/forgot-password` — Request password reset link
+- `POST /api/v1/auth/reset-password` — Reset password using token
 
-OpenAPI
-- UI: http://localhost:8080/swagger-ui.html
-- JSON: http://localhost:8080/v3/api-docs
+**OAuth2 Endpoints**
+- `GET /oauth2/authorization/google` — Initiate Google OAuth2 login flow
+- `GET /login/oauth2/code/google` — OAuth2 callback endpoint (handled internally)
 
-Registration flow (summary)
-- Send OTP → Verify OTP → Receive preAuth token → Call Register with `Authorization: Bearer <preAuth-token>` → Receive access token + refresh cookie
+**Protected Endpoints**
+- `GET /api/v1/users/me` — Get current user profile
+- `GET /api/v1/users` — List all users (ADMIN role required)
+
+### API Documentation
+- **Swagger UI**: http://localhost:8080/swagger-ui.html
+- **OpenAPI JSON**: http://localhost:8080/v3/api-docs
+
+### Authentication Flows
+
+**Traditional Registration Flow**
+1. Send OTP → Verify OTP → Receive preAuth token → Register with preAuth token → Receive access token + refresh cookie
+
+**OAuth2 Login Flow**
+1. Redirect to `/oauth2/authorization/google` → User authenticates with Google → Redirect back with authorization code → Service processes user info → Set refresh token cookie → Redirect to frontend dashboard
+
+**Token Management**
+- Access tokens are JWTs valid for 15 minutes
+- Refresh tokens are HttpOnly cookies valid for 7 days
+- Refresh endpoint rotates tokens for enhanced security
 
 ---
 
@@ -70,25 +89,42 @@ Prerequisites
 - Maven 3.9+
 - PostgreSQL 14+
 
-Environment
-Create a .env file (or export environment variables) with the following keys:
+### Environment Configuration
+
+Create a `.env` file in the project root (or export environment variables) with the following keys:
 
 ```properties
-# Database
+# Database Configuration
 DB_URL=jdbc:postgresql://localhost:5432/auth_db
 DB_USERNAME=postgres
 DB_PASSWORD=your_secure_password
 
-# JWT (use a strong, base64-encoded 256-bit key)
+# JWT Configuration (use a strong, base64-encoded 256-bit key)
 JWT_SECRET_KEY=your_very_long_random_secret_key_base64_encoded
 
-# Email (SMTP)
+# Email Configuration (SMTP)
 MAIL_USERNAME=your_email@gmail.com
 MAIL_PASSWORD=your_app_password
 
-# Client
+# Frontend Configuration
 FRONTEND_URL=http://localhost:3000
+
+# OAuth2 Configuration (Google)
+GOOGLE_CLIENT_ID=your_google_client_id_here
+GOOGLE_CLIENT_SECRET=your_google_client_secret_here
 ```
+
+### OAuth2 Setup
+
+To enable Google OAuth2 authentication:
+
+1. Go to the [Google Cloud Console](https://console.cloud.google.com/)
+2. Create a new project or select an existing one
+3. Enable the Google+ API
+4. Create OAuth 2.0 credentials (Client ID and Client Secret)
+5. Add your frontend URL to authorized redirect URIs
+6. Set the redirect URI to: `{your-frontend-url}/login/oauth2/code/google`
+7. Add the Client ID and Client Secret to your `.env` file
 
 Run
 - Windows: mvnw.cmd spring-boot:run
@@ -100,17 +136,34 @@ Database migrations run automatically via Flyway on startup.
 
 ---
 
-## Security Model (at a glance) 🔐
+## Security Model 🔐
 
-- Access token: JWT in Authorization: Bearer <token>, expires ~15 minutes
-- Refresh token: HttpOnly, Secure cookie; opaque UUID stored as SHA-256 hash in DB
-- Rotation: each /refresh call invalidates previous token and issues a new one
-- Rate limiting: 10 requests/minute per IP on /api/v1/auth/**
-- CORS: allowed origins configured via FRONTEND_URL
+### Authentication Methods
 
-Additional details
-- Pre-registration security: a short-lived preAuth registration token (issued by `verify-otp`) is recognized by the JWT filter and allowed only for completing `/auth/register`. It cannot access protected resources.
-- Cookie name: refresh token is set as `refresh_token` with HttpOnly, Secure, SameSite attributes appropriate for cross-site usage with CORS.
+- **JWT Authentication**: Traditional email/password with OTP verification
+- **OAuth2 Social Login**: Google OAuth2 integration for seamless authentication
+- **Hybrid Support**: Users can link OAuth2 accounts to existing profiles or create new accounts via social login
+
+### Token Security
+
+- **Access Tokens**: JWT tokens in `Authorization: Bearer <token>` header, expires in 15 minutes
+- **Refresh Tokens**: HttpOnly, Secure cookies containing opaque UUIDs, stored as SHA-256 hashes in database
+- **Token Rotation**: Each `/refresh` call invalidates the previous refresh token and issues a new one
+- **Cookie Security**: Refresh tokens use `HttpOnly`, `Secure`, and appropriate `SameSite` attributes
+
+### Protection Mechanisms
+
+- **Rate Limiting**: 10 requests per minute per IP on authentication endpoints using Bucket4j
+- **CORS Configuration**: Configurable allowed origins via `FRONTEND_URL` environment variable
+- **Pre-registration Security**: Short-lived preAuth tokens (10 minutes) for secure registration completion
+- **Open Redirect Protection**: OAuth2 redirects validated against configured frontend URL
+
+### OAuth2 Security Features
+
+- **State Parameter**: Prevents CSRF attacks during OAuth2 flow
+- **PKCE Support**: Proof Key for Code Exchange for enhanced security
+- **Secure Redirects**: Only allows redirects to pre-configured frontend URLs
+- **User Info Validation**: Email verification required from OAuth2 providers
 
 ---
 
