@@ -12,7 +12,7 @@ A comprehensive, production-ready authentication and user management service bui
 
 ---
 
-## Highlights ✨
+## Highlights
 
 - **Multi-Authentication Support**: JWT-based authentication with OAuth2 social login (Google)
 - **Secure Token Management**: Refresh token rotation with one-time use and server-side revocation
