@@ -21,8 +21,11 @@ import java.util.function.Function;
 public class JwtService {
     private static final String SCOPE_CLAIM_NAME = "scope";
     private static final String REGISTRATION_SCOPE = "PRE_AUTH_REGISTRATION";
+    private static final String MFA_CHALLENGE_SCOPE = "MFA_CHALLENGE";
     @Value("${app.security.jwt.registration-token-expiration}")
     private long registrationTokenExpiration;
+    @Value("${app.security.jwt.mfa-token-expiration}")
+    private long mfaTokenExpiration;
     @Value("${app.security.jwt.secret-key}")
     private String secretKey;
     @Value("${app.security.jwt.access-token-expiration}")
@@ -47,6 +50,13 @@ public class JwtService {
         Map<String, Object> claims = new HashMap<>();
         claims.put(SCOPE_CLAIM_NAME, REGISTRATION_SCOPE);
         return buildToken(claims, email, registrationTokenExpiration);
+    }
+
+    // MFA Challenge Token (issued after password is verified)
+    public String generateMfaChallengeToken(UUID userId) {
+        Map<String, Object> claims = new HashMap<>();
+        claims.put(SCOPE_CLAIM_NAME, MFA_CHALLENGE_SCOPE);
+        return buildToken(claims, userId.toString(), mfaTokenExpiration);
     }
 
     // --- Helper to build tokens ---
@@ -79,6 +89,17 @@ public class JwtService {
             if (isTokenExpired(token)) return false;
             String scope = extractClaim(token, claims -> claims.get(SCOPE_CLAIM_NAME, String.class));
             return REGISTRATION_SCOPE.equals(scope);
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    // Validates the specific MFA Challenge Scope
+    public boolean isMfaChallengeToken(String token) {
+        try {
+            if (isTokenExpired(token)) return false;
+            String scope = extractClaim(token, claims -> claims.get(SCOPE_CLAIM_NAME, String.class));
+            return MFA_CHALLENGE_SCOPE.equals(scope);
         } catch (Exception e) {
             return false;
         }
