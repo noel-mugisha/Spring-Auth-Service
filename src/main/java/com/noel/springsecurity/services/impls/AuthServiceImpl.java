@@ -18,6 +18,7 @@ import com.noel.springsecurity.repositories.IUserRepository;
 import com.noel.springsecurity.security.UserPrincipal;
 import com.noel.springsecurity.security.jwt.JwtService;
 import com.noel.springsecurity.services.IAuthService;
+import com.noel.springsecurity.services.IMfaService;
 import com.noel.springsecurity.services.IRefreshTokenService;
 import com.noel.springsecurity.utils.TokenHashUtil;
 import lombok.RequiredArgsConstructor;
@@ -48,6 +49,7 @@ public class AuthServiceImpl implements IAuthService {
     private final AuthenticationManager authenticationManager;
     private final ApplicationEventPublisher eventPublisher;
     private final IUserMapper userMapper;
+    private final IMfaService mfaService;
     @Value("${app.security.email.reset-password-expiration}")
     private int resetPasswordExpirationMinutes;
     @Value("${app.security.email.reset-password-url}")
@@ -122,7 +124,7 @@ public class AuthServiceImpl implements IAuthService {
     // STANDARD LOGIN
     @Override
     @Transactional
-    public AuthResult login(LoginRequest request) {
+    public LoginResult login(LoginRequest request) {
         Authentication authentication;
         try {
             authentication = authenticationManager.authenticate(
@@ -135,6 +137,42 @@ public class AuthServiceImpl implements IAuthService {
         }
         UserPrincipal principal = (UserPrincipal) authentication.getPrincipal();
         User user = principal.getUser();
+
+        // Step-up: if MFA is enabled, don't issue real tokens yet.
+        if (user.isMfaEnabled()) {
+            String mfaToken = jwtService.generateMfaChallengeToken(user.getId());
+            return new LoginResult.MfaRequired(mfaToken);
+        }
+
+        String accessToken = jwtService.generateAccessToken(user);
+        String refreshToken = refreshTokenService.createRefreshToken(user);
+
+        return new LoginResult.Success(new AuthResult(accessToken, refreshToken, userMapper.toDto(user)));
+    }
+
+    // VERIFY MFA CHALLENGE & COMPLETE LOGIN
+    @Override
+    @Transactional
+    public AuthResult verifyMfaAndLogin(String mfaToken, String code) {
+        if (jwtService.isTokenExpired(mfaToken) || !jwtService.isMfaChallengeToken(mfaToken)) {
+            throw new BadCredentialsException("Invalid or expired MFA session. Please log in again.");
+        }
+        UUID userId = UUID.fromString(jwtService.extractUserSubject(mfaToken));
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        if (!user.isMfaEnabled()) {
+            // MFA was disabled after this challenge token was issued — fail closed.
+            throw new BadCredentialsException("MFA is no longer enabled for this account.");
+        }
+
+        boolean validCode = mfaService.isValidTotpCode(user.getMfaSecret(), code)
+                || mfaService.redeemRecoveryCode(user, code);
+
+        if (!validCode) {
+            throw new BadCredentialsException("Invalid authentication code.");
+        }
+
         String accessToken = jwtService.generateAccessToken(user);
         String refreshToken = refreshTokenService.createRefreshToken(user);
 

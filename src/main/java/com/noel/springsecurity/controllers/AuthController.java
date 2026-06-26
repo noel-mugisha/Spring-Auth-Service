@@ -3,6 +3,7 @@ package com.noel.springsecurity.controllers;
 import com.noel.springsecurity.dto.request.*;
 import com.noel.springsecurity.dto.response.ApiMessageResponse;
 import com.noel.springsecurity.dto.response.AuthResponse;
+import com.noel.springsecurity.dto.response.MfaChallengeResponse;
 import com.noel.springsecurity.dto.response.OtpResponse;
 import com.noel.springsecurity.services.IAuthService;
 import com.noel.springsecurity.utils.CookieUtil;
@@ -60,11 +61,29 @@ public class AuthController {
                 .body(new AuthResponse(result.accessToken(), result.user()));
     }
 
-    // Login
+    // Login (may return tokens directly, or a one-time MFA challenge)
     @PostMapping("/login")
-    public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
-        IAuthService.AuthResult result = authService.login(request);
+    public ResponseEntity<?> login(@Valid @RequestBody LoginRequest request) {
+        IAuthService.LoginResult result = authService.login(request);
 
+        return switch (result) {
+            case IAuthService.LoginResult.MfaRequired mfaRequired ->
+                    ResponseEntity.ok(new MfaChallengeResponse(true, mfaRequired.mfaToken()));
+
+            case IAuthService.LoginResult.Success success -> {
+                IAuthService.AuthResult authResult = success.result();
+                ResponseCookie cookie = cookieUtil.createRefreshTokenCookie(authResult.refreshToken());
+                yield ResponseEntity.ok()
+                        .header(HttpHeaders.SET_COOKIE, cookie.toString())
+                        .body(new AuthResponse(authResult.accessToken(), authResult.user()));
+            }
+        };
+    }
+
+    // Complete login after submitting a TOTP/recovery code
+    @PostMapping("/mfa/verify")
+    public ResponseEntity<AuthResponse> verifyMfaLogin(@Valid @RequestBody MfaLoginVerifyRequest request) {
+        IAuthService.AuthResult result = authService.verifyMfaAndLogin(request.mfaToken(), request.code());
         ResponseCookie cookie = cookieUtil.createRefreshTokenCookie(result.refreshToken());
 
         return ResponseEntity.ok()
