@@ -49,4 +49,10 @@ public class User extends BaseEntity {
     private String passwordResetToken;
     @Column(name = "password_reset_token_expiry")
     private LocalDateTime passwordResetTokenExpiry;
+
+    // MFA Fields
+    @Column(name = "mfa_enabled", nullable = false)
+    private boolean mfaEnabled = false;
+    @Column(name = "mfa_secret")
+    private String mfaSecret;
 }
