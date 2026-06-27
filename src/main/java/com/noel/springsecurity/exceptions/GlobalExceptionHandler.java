@@ -87,7 +87,7 @@ public class GlobalExceptionHandler {
     /**
      * Handling JWT Errors
      */
-    // Handle Expired JWT (Crucial for Refresh Token flow)
+    // Handle Expired JWT
     @ExceptionHandler(ExpiredJwtException.class)
     public ResponseEntity<ApiErrorResponse> handleExpiredJwt(ExpiredJwtException ex) {
         return buildResponse(HttpStatus.UNAUTHORIZED, "Token has expired. Please refresh your session.");
