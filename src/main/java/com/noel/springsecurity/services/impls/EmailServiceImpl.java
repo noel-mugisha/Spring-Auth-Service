@@ -6,6 +6,7 @@ import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.mail.MailException;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
@@ -32,14 +33,17 @@ public class EmailServiceImpl implements IEmailService {
             helper.setTo(to);
             helper.setSubject("SecureApp - Verification Code");
 
-            // Inject the OTP into the template
             String htmlContent = getOtpEmailTemplate(otpCode);
             helper.setText(htmlContent, true);
 
             mailSender.send(message);
             log.info("OTP Email sent to: {}", to);
 
-        } catch (MessagingException e) {
+        } catch (MessagingException | MailException e) {
+            // MessagingException = something went wrong building the message.
+            // MailException = something went wrong actually transporting it (e.g. SMTP outage).
+            // Both must be handled the same way here: log it, never let it escape — this runs
+            // inside an @Async listener, so an uncaught exception has no one watching for it.
             log.error("Failed to send OTP email to {}: {}", to, e.getMessage());
         }
     }
@@ -60,15 +64,12 @@ public class EmailServiceImpl implements IEmailService {
             mailSender.send(message);
             log.info("Password Reset Email sent to: {}", to);
 
-        } catch (MessagingException e) {
+        } catch (MessagingException | MailException e) {
             log.error("Failed to send reset email to {}: {}", to, e.getMessage());
         }
     }
 
     private String getOtpEmailTemplate(String otp) {
-        // We use a "spaced" version of the OTP for better readability in the HTML
-        String spacedOtp = otp.replaceAll(".(?!$)", "$0 ");
-
         return """
                 <!DOCTYPE html>
                 <html>
@@ -117,7 +118,7 @@ public class EmailServiceImpl implements IEmailService {
                     </div>
                 </body>
                 </html>
-                """.formatted(otp); // Note: We pass raw OTP, CSS letter-spacing handles the look
+                """.formatted(otp);
     }
 
     private String getPasswordResetTemplate(String username, String link) {
