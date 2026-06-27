@@ -57,6 +57,7 @@ app:
       access-token-expiration: 900000      # 15 minutes (in ms)
       refresh-token-expiration: 604800000  # 7 days (in ms)
       registration-token-expiration: 600000 # 10 minutes (in ms)
+      mfa-token-expiration: 300000          # 5 minutes (in ms)
 
     cors:
       allowed-origins: ${FRONTEND_URL}
@@ -67,6 +68,9 @@ app:
     email:
       reset-password-url: ${FRONTEND_URL}/reset-password
       reset-password-expiration: 15  # 15 minutes
+
+    mfa:
+      issuer-name: ${MFA_ISSUER_NAME:SpringSecurityApp}
 
   seed:
     enabled: true
