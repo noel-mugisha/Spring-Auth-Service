@@ -6,6 +6,7 @@
 [![Flyway](https://img.shields.io/badge/Flyway-10.x-A41E11?style=flat-square&logo=flyway&logoColor=white)](https://flywaydb.org/)
 [![OpenAPI](https://img.shields.io/badge/OpenAPI-3-6BA539?style=flat-square&logo=openapi-initiative&logoColor=white)](https://swagger.io/specification/)
 [![Google OAuth2](https://img.shields.io/badge/Google%20OAuth2-4285F4?style=flat-square&logo=google&logoColor=white)](https://developers.google.com/identity/protocols/oauth2)
+[![MFA](https://img.shields.io/badge/MFA-TOTP%20%E2%80%A2%20RFC%206238-EC1C24?style=flat-square&logo=authy&logoColor=white)](https://datatracker.ietf.org/doc/html/rfc6238)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](LICENSE)
 
 A comprehensive, production-ready authentication and user management service built with Spring Boot. This service provides robust security features including JWT-based authentication, refresh token rotation with HttpOnly cookies, OAuth2 social login (Google), email verification with OTP, password reset workflows, rate limiting, and database migrations. Designed for modern web applications requiring secure, scalable user authentication and authorization.
@@ -15,6 +16,7 @@ A comprehensive, production-ready authentication and user management service bui
 ## Highlights
 
 - **Multi-Authentication Support**: JWT-based authentication with OAuth2 social login (Google)
+- **Multi-Factor Authentication**: TOTP-based MFA (RFC 6238) compatible with Google Authenticator, Authy, and any standard authenticator app — with QR code enrollment, manual secret entry, and 10 single-use recovery codes
 - **Secure Token Management**: Refresh token rotation with one-time use and server-side revocation
 - **Stateless APIs**: Short-lived JWT access tokens (15 min) with HttpOnly, Secure cookies for refresh tokens (XSS-safe)
 - **Hashed Token Storage**: SHA-256 hashed refresh tokens stored securely in database
@@ -27,7 +29,7 @@ A comprehensive, production-ready authentication and user management service bui
 
 ---
 
-## Architecture & Tech Stack 🧩
+## Architecture & Tech Stack
 
 - **Language**: Java 21
 - **Framework**: Spring Boot 3.5.x, Spring Web, Spring Security, Spring OAuth2 Client
@@ -35,13 +37,14 @@ A comprehensive, production-ready authentication and user management service bui
 - **Migrations**: Flyway 10.x
 - **JWT**: JJWT 0.12.x
 - **Rate Limiting**: Bucket4j
+- **MFA / TOTP**: dev.samstevens.totp 1.7.1 (RFC 6238)
 - **Mapping/Boilerplate**: MapStruct, Lombok
 - **API Docs**: springdoc-openapi
 - **OAuth2**: Spring Security OAuth2 Client for social authentication
 
 ---
 
-## API Surface 🔗
+## API Surface
 
 ### Authentication Endpoints
 
@@ -50,6 +53,7 @@ A comprehensive, production-ready authentication and user management service bui
 - `POST /api/v1/auth/verify-otp` — Verify OTP; returns a temporary preAuth token
 - `POST /api/v1/auth/register` — Complete registration; requires `Authorization: Bearer <preAuth-token>`
 - `POST /api/v1/auth/login` — Traditional login; returns access token (JSON) and sets refresh token cookie
+- `POST /api/v1/auth/mfa/verify` — Submit a TOTP code or recovery code to complete an MFA-gated login
 - `POST /api/v1/auth/refresh` — Rotate refresh token and return new access token
 - `POST /api/v1/auth/logout` — Revoke refresh token and clear cookie
 - `POST /api/v1/auth/forgot-password` — Request password reset link
@@ -58,6 +62,11 @@ A comprehensive, production-ready authentication and user management service bui
 **OAuth2 Endpoints**
 - `GET /oauth2/authorization/google` — Initiate Google OAuth2 login flow
 - `GET /login/oauth2/code/google` — OAuth2 callback endpoint (handled internally)
+
+**MFA Endpoints** *(require a valid access token)*
+- `POST /api/v1/mfa/setup` — Generate a TOTP secret and return it as a raw key + QR code data URI
+- `POST /api/v1/mfa/enable` — Confirm enrollment with a live code from the authenticator app; returns 10 single-use recovery codes
+- `POST /api/v1/mfa/disable` — Disable MFA; requires the account password as confirmation
 
 **Protected Endpoints**
 - `GET /api/v1/users/me` — Get current user profile
@@ -75,10 +84,39 @@ A comprehensive, production-ready authentication and user management service bui
 **OAuth2 Login Flow**
 1. Redirect to `/oauth2/authorization/google` → User authenticates with Google → Redirect back with authorization code → Service processes user info → Set refresh token cookie → Redirect to frontend dashboard
 
+**MFA Login Flow**
+1. `POST /auth/login` with email + password → receive `{ mfaRequired: true, mfaToken }` instead of tokens
+2. Open authenticator app → get current 6-digit code (or use a recovery code if the phone is unavailable)
+3. `POST /auth/mfa/verify` with `{ mfaToken, code }` → receive access token + refresh cookie as normal
+
 **Token Management**
 - Access tokens are JWTs valid for 15 minutes
 - Refresh tokens are HttpOnly cookies valid for 7 days
 - Refresh endpoint rotates tokens for enhanced security
+
+---
+
+## Multi-Factor Authentication
+
+MFA adds a mandatory second step to login for accounts that have it enabled. It is fully opt-in — existing users without MFA enabled are unaffected.
+
+**How it works behind the scenes**
+
+When a user enables MFA, the server generates a secret key (stored in the database) and returns it as both a scannable QR code and a plain text string for manual entry. The user adds it to any standard TOTP app. From that point, every login requires the user to provide a 6-digit code that both the server and the app compute independently from the same secret and the current time — no network call to the app, no email, no SMS.
+
+On login, after the password is verified, the server issues a short-lived **MFA challenge token** (5 minutes) instead of real session tokens. This challenge token can only be used at `/auth/mfa/verify` — it cannot authenticate any other endpoint. Real tokens are only issued once a valid TOTP code (or recovery code) is submitted against it.
+
+**Recovery codes**
+
+10 single-use backup codes are generated at enrollment. Each is SHA-256 hashed before storage and burned immediately on use. They are shown once and never again — the user is responsible for saving them securely. Any recovery code is accepted in place of a TOTP code at `/auth/mfa/verify`.
+
+**Enrollment flow**
+
+```
+POST /api/v1/mfa/setup              → { secret, qrCodeImageDataUri }
+  ↓ scan QR in authenticator app (or enter secret manually)
+POST /api/v1/mfa/enable  { code }   → { recoveryCodes: [ ... ] }   ← save these
+```
 
 ---
 
@@ -112,6 +150,9 @@ FRONTEND_URL=http://localhost:3000
 # OAuth2 Configuration (Google)
 GOOGLE_CLIENT_ID=your_google_client_id_here
 GOOGLE_CLIENT_SECRET=your_google_client_secret_here
+
+# MFA Configuration (optional — defaults to "SpringSecurityApp")
+MFA_ISSUER_NAME=YourAppName
 ```
 
 ### OAuth2 Setup
@@ -136,7 +177,7 @@ Database migrations run automatically via Flyway on startup.
 
 ---
 
-## Security Model 🔐
+## Security Model
 
 ### Authentication Methods
 
@@ -167,7 +208,7 @@ Database migrations run automatically via Flyway on startup.
 
 ---
 
-## Admin Seeder 🧑‍💻
+## Admin Seeder
 
 An optional admin seeder can bootstrap an admin account on startup (controlled via application.yaml):
 - Email: admin@company.com
@@ -175,14 +216,14 @@ An optional admin seeder can bootstrap an admin account on startup (controlled v
 
 ---
 
-## Development & Testing 🧪
+## Development & Testing
 
 - Build: mvnw.cmd -q -DskipTests package (Windows) or ./mvnw -q -DskipTests package
 - Tests: mvnw.cmd test or ./mvnw test
 
 ---
 
-## Contributing 🤝
+## Contributing
 
 We welcome contributions that improve stability, performance, security, or developer experience.
 
@@ -195,21 +236,17 @@ We welcome contributions that improve stability, performance, security, or devel
   - Follow idiomatic Spring Boot patterns and keep services/interface contracts clean.
   - Keep security-sensitive changes small and well-documented in PR descriptions.
   - Prefer MapStruct for mappings and avoid manual boilerplate when possible.
-  - Format code with the default IntelliJ Java style and organize imports.
 
 - Commits & PRs
   - Use conventional commit messages (e.g., feat:, fix:, docs:, refactor:, test:).
   - Open focused PRs with a clear description, screenshots/logs when relevant, and test coverage.
   - Link related issues and update README or OpenAPI docs when behavior changes.
 
-- Security
-  - Do not open public issues for vulnerabilities. Instead, email the maintainer listed in OpenApiConfig (Contact) with details and a minimal reproduction. We will coordinate a responsible disclosure process.
-
 By contributing, you agree that your contributions will be licensed under the MIT License.
 
 ---
 
-## Contact 📬
+## Contact
 
 For more information or inquiries, please reach out at: noelmugisha332@gmail.com
 
