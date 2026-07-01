@@ -24,8 +24,10 @@ jobs:
           distribution: 'temurin'
           cache: 'maven'
 
-      - name: Run unit tests
+      - name: Run tests
         run: mvn --batch-mode test
+        env:
+          SPRING_PROFILES_ACTIVE: test
 
       - name: Upload test results
         if: always()
