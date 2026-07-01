@@ -219,7 +219,7 @@ An optional admin seeder can bootstrap an admin account on startup (controlled v
 ## Development & Testing
 
 - Build: mvnw.cmd -q -DskipTests package (Windows) or ./mvnw -q -DskipTests package
-- Tests: mvnw.cmd test or ./mvnw test
+- Tests: mvnw.cmd test or ./mvnw test + Docker is required for TestContainers
 
 ---
 
