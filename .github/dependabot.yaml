@@ -1,0 +1,70 @@
+version: 2
+
+updates:
+
+  # Maven dependencies
+  - package-ecosystem: "maven"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "08:00"
+      timezone: "Africa/Kigali"
+    open-pull-requests-limit: 8
+    labels:
+      - "dependencies"
+      - "java"
+
+    groups:
+
+      spring-boot:
+        patterns:
+          - "org.springframework.boot:*"
+          - "org.springframework:*"
+          - "org.springframework.security:*"
+
+      jwt:
+        patterns:
+          - "io.jsonwebtoken:*"
+
+      database:
+        patterns:
+          - "org.postgresql:*"
+          - "org.flywaydb:*"
+
+      observability-and-docs:
+        patterns:
+          - "org.springdoc:*"
+          - "com.bucket4j:*"
+
+      mfa:
+        patterns:
+          - "dev.samstevens.totp:*"
+
+      lombok-and-mapstruct:
+        patterns:
+          - "org.projectlombok:*"
+          - "org.mapstruct:*"
+
+      testing:
+        patterns:
+          - "org.junit.jupiter:*"
+          - "org.mockito:*"
+          - "org.assertj:*"
+
+  # GitHub Actions themselves
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "08:00"
+      timezone: "Africa/Kigali"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+      - "github-actions"
+    groups:
+      github-actions:
+        patterns:
+          - "*"
