@@ -58,6 +58,7 @@ public class SecurityConfig {
                         // Public Endpoints
                         .requestMatchers("/api/v1/auth/**").permitAll()
                         .requestMatchers("/oauth2/**").permitAll() // Allow OAuth redirects
+                        .requestMatchers(WHITELIST).permitAll()
                         .requestMatchers(SWAGGER_WHITELIST).permitAll()
                         // Any other request requires authentication
                         .anyRequest().authenticated()
@@ -130,6 +131,13 @@ public class SecurityConfig {
             "/swagger-ui/index.html",
             "/swagger-ui/**",
             "/swagger-ui-oauth2-redirect.html",
-            "/swagger-resources/**"
+            "/swagger-resources/**",
+            "/actuator/health"
+    };
+
+    // None-Swagger public endpoints will be added here
+    private static final String[] WHITELIST = {
+            "/actuator/health",
+            "/api/v1/health"
     };
 }

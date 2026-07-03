@@ -7,6 +7,7 @@
 [![OpenAPI](https://img.shields.io/badge/OpenAPI-3-6BA539?style=flat-square&logo=openapi-initiative&logoColor=white)](https://swagger.io/specification/)
 [![Google OAuth2](https://img.shields.io/badge/Google%20OAuth2-4285F4?style=flat-square&logo=google&logoColor=white)](https://developers.google.com/identity/protocols/oauth2)
 [![MFA](https://img.shields.io/badge/MFA-TOTP%20%E2%80%A2%20RFC%206238-EC1C24?style=flat-square&logo=authy&logoColor=white)](https://datatracker.ietf.org/doc/html/rfc6238)
+[![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?style=flat-square&logo=docker&logoColor=white)](https://www.docker.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](LICENSE)
 
 A comprehensive, production-ready authentication and user management service built with Spring Boot. This service provides robust security features including JWT-based authentication, refresh token rotation with HttpOnly cookies, OAuth2 social login (Google), email verification with OTP, password reset workflows, rate limiting, and database migrations. Designed for modern web applications requiring secure, scalable user authentication and authorization.
@@ -26,6 +27,7 @@ A comprehensive, production-ready authentication and user management service bui
 - **Database Migrations**: Versioned schema management with Flyway
 - **API Documentation**: OpenAPI/Swagger UI integration out of the box
 - **Social Authentication**: Seamless OAuth2 integration allowing users to authenticate via Google accounts
+- **Containerized by Default**: Multi-stage Docker build and a ready-to-run Docker Compose stack — no local Java or PostgreSQL installation required to run the service
 
 ---
 
@@ -41,6 +43,7 @@ A comprehensive, production-ready authentication and user management service bui
 - **Mapping/Boilerplate**: MapStruct, Lombok
 - **API Docs**: springdoc-openapi
 - **OAuth2**: Spring Security OAuth2 Client for social authentication
+- **Containerization**: Docker (multi-stage build) + Docker Compose
 
 ---
 
@@ -120,29 +123,43 @@ POST /api/v1/mfa/enable  { code }   → { recoveryCodes: [ ... ] }   ← save th
 
 ---
 
-## Setup ⚙️
+## Setup
 
-Prerequisites
-- Java 21
-- Maven 3.9+
-- PostgreSQL 14+
+The application is fully containerized. You do **not** need Java, Maven, or a local PostgreSQL installation to run it — Docker handles the entire build and runtime, including the database.
 
-### Environment Configuration
+### Prerequisites
 
-Create a `.env` file in the project root (or export environment variables) with the following keys:
+- [Docker](https://docs.docker.com/get-docker/) and [Docker Compose](https://docs.docker.com/compose/install/) — both are bundled with [Docker Desktop](https://www.docker.com/products/docker-desktop/) on Windows and macOS. On Linux, install the [Docker Compose plugin](https://docs.docker.com/compose/install/linux/) alongside the Docker Engine.
+
+That's the only requirement. Everything else — the JDK, the build, and the database — runs inside containers.
+
+### 1. Clone the repository
+
+```bash
+git clone https://github.com/noel-mugisha/Spring-Auth-Service.git
+cd Spring-Auth-Service
+```
+
+### 2. Configure environment variables
+
+Copy the example environment file and fill in your own values:
+
+```bash
+cp .env.example .env
+```
 
 ```properties
-# Database Configuration
-DB_URL=jdbc:postgresql://localhost:5432/auth_db
-DB_USERNAME=postgres
-DB_PASSWORD=your_secure_password
+# Database configuration
+DB_URL=your_database_url_here
+DB_USERNAME=your_database_username_here
+DB_PASSWORD=your_database_password_here
 
-# JWT Configuration (use a strong, base64-encoded 256-bit key)
+# Mail configuration
+MAIL_USERNAME=your_mail_username_here
+MAIL_PASSWORD=your_mail_password_here
+
+# JWT configuration (use a strong, base64-encoded 256-bit key)
 JWT_SECRET_KEY=your_very_long_random_secret_key_base64_encoded
-
-# Email Configuration (SMTP)
-MAIL_USERNAME=your_email@gmail.com
-MAIL_PASSWORD=your_app_password
 
 # Frontend Configuration
 FRONTEND_URL=http://localhost:3000
@@ -155,6 +172,33 @@ GOOGLE_CLIENT_SECRET=your_google_client_secret_here
 MFA_ISSUER_NAME=YourAppName
 ```
 
+> **Note:** When running via Docker Compose, `DB_USERNAME` and `DB_PASSWORD` also provision the bundled PostgreSQL container, and the app connects to it automatically over the internal Docker network — you don't need to point `DB_URL` at `localhost` or run Postgres yourself.
+
+### 3. Run the application
+
+```bash
+docker compose up --build
+```
+
+This single command will:
+1. Build the application image (multi-stage Docker build — no local Java or Maven involved)
+2. Start a PostgreSQL 16 container with a persistent named volume
+3. Wait for the database to report healthy before starting the app
+4. Run Flyway migrations automatically on startup
+5. Expose the API on `http://localhost:8080`
+
+To run it normally after building the image (this is after the first time):
+
+```bash
+docker compose up -d
+```
+
+### 4. Verify it's running
+
+- **API base URL**: http://localhost:8080
+- **Swagger UI**: http://localhost:8080/swagger-ui.html
+- **OpenAPI JSON**: http://localhost:8080/v3/api-docs
+
 ### OAuth2 Setup
 
 To enable Google OAuth2 authentication:
@@ -166,14 +210,6 @@ To enable Google OAuth2 authentication:
 5. Add your frontend URL to authorized redirect URIs
 6. Set the redirect URI to: `{your-frontend-url}/login/oauth2/code/google`
 7. Add the Client ID and Client Secret to your `.env` file
-
-Run
-- Windows: mvnw.cmd spring-boot:run
-- Linux/Mac: ./mvnw spring-boot:run
-
-The application starts on port 8080.
-
-Database migrations run automatically via Flyway on startup.
 
 ---
 
@@ -218,8 +254,10 @@ An optional admin seeder can bootstrap an admin account on startup (controlled v
 
 ## Development & Testing
 
-- Build: mvnw.cmd -q -DskipTests package (Windows) or ./mvnw -q -DskipTests package
-- Tests: mvnw.cmd test or ./mvnw test + Docker is required for TestContainers
+The instructions below are for contributors actively working on the codebase and require a local Java 21 + Maven 3.9+ toolchain — they are **not** needed to simply run the application (see [Setup](#setup-️) above for the Docker-based quick start).
+
+- Build: `mvnw.cmd -q -DskipTests package` (Windows) or `./mvnw -q -DskipTests package` (Linux/Mac)
+- Tests: `mvnw.cmd test` or `./mvnw test` — Docker is required, since the integration test suite uses Testcontainers to run against a real PostgreSQL instance
 
 ---
 
