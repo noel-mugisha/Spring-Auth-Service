@@ -77,3 +77,18 @@ app:
     admin:
       email: "admin@company.com"
       password: "ChangeMe123!"
+
+# Actuator (health checks for Docker / Kubernetes)
+management:
+  server:
+    port: 8081
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: always
+  health:
+    db:
+      enabled: true

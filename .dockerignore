@@ -1,0 +1,46 @@
+target/
+
+# ─── Version control ─────────────────────────────────────────────────────────
+.git/
+.gitignore
+.gitattributes
+
+# ─── IDE and editor files ────────────────────────────────────────────────────
+.idea/
+*.iml
+*.iws
+*.ipr
+.vscode/
+*.code-workspace
+.classpath
+.project
+.settings/
+
+# ─── Secrets — CRITICAL ──────────────────────────────────────────────────────
+.env
+.env.*
+!.env.example    # .env.example has no real values — safe to include
+
+# ─── Documentation and project files ─────────────────────────────────────────
+*.md
+LICENSE
+CHANGELOG*
+
+# ─── Docker files themselves ──────────────────────────────────────────────────
+# No reason for docker-compose files or the Dockerfile to be inside the image.
+docker-compose*.yml
+docker-compose*.yaml
+Dockerfile*
+
+# ─── GitHub CI/CD ────────────────────────────────────────────────────────────
+.github/
+
+# ─── Test reports ────────────────────────────────────────────────────────────
+# target/ already covers these, but listed explicitly for clarity
+**/surefire-reports/
+**/failsafe-reports/
+
+# ─── OS-generated files ──────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+Desktop.ini
